@@ -230,6 +230,7 @@ const Coins = (() => {
         const amount = Math.ceil(1 * (1 + PlayerUpgrades.getCurrencyBoost()));
         GameState.coins += amount;
         GameState.totalCoins += amount;
+        if (typeof RunStats !== 'undefined') RunStats.coinsCollected += amount;
         SFX.play('purchase');
       }
     }
@@ -491,19 +492,95 @@ const UI = (() => {
     return `${mins}:${String(secs).padStart(2,'0')}`;
   }
 
-  function showGameOver(score, coinsEarned) {
+  function showGameOver(score, runCoins) {
+    // ── Header stats (instant)
     document.getElementById('go-score').textContent = Math.floor(score);
-    document.getElementById('go-coins').textContent = coinsEarned;
-    document.getElementById('go-time').textContent = getElapsedFormatted();
+    document.getElementById('go-time').textContent  = getElapsedFormatted();
     const best = Math.floor(GameState.bestScore);
-    document.getElementById('go-best').textContent = best;
-
     const bestEl = document.getElementById('go-best');
-    if (score >= GameState.bestScore) {
-      bestEl.style.color = 'var(--neon-yellow)';
+    if (bestEl) {
+      bestEl.textContent = best;
+      bestEl.style.color = Math.floor(score) >= best ? 'var(--neon-yellow)' : '';
     }
 
+    // ── Coin breakdown amounts
+    const stats = (typeof RunStats !== 'undefined') ? RunStats : {};
+    const heightCoins  = Math.floor(score / 10);
+    const enemyCoins   = (stats.enemiesKilled  || 0) * 3;
+    const bounceCoins  = Math.floor((stats.platformsBounced || 0) / 5);
+    const bossCoins    = (stats.bossesKilled   || 0) * 50;
+    const collected    = stats.coinsCollected  || 0;
+    const total        = heightCoins + enemyCoins + bounceCoins + bossCoins + collected;
+
+    // Award total to player's persistent coins
+    GameState.totalCoins += total;
+    Save.save();
+
+    // ── Reset rows to hidden
+    const rows = ['height','enemies','collected','bounces','bosses'];
+    rows.forEach(id => {
+      const row = document.getElementById('go-row-' + id);
+      const val = document.getElementById('go-coins-' + id);
+      if (row) { row.classList.remove('visible'); }
+      if (val) val.textContent = '+0';
+    });
+    const totalEl = document.getElementById('go-coins-total');
+    if (totalEl) totalEl.textContent = '0';
+    const actionsEl = document.querySelector('.gameover-actions');
+    if (actionsEl) actionsEl.classList.remove('visible');
+
+    // Show/hide boss row
+    const bossRow = document.getElementById('go-row-bosses');
+    if (bossRow) bossRow.style.display = (stats.bossesKilled > 0) ? '' : 'none';
+
     showScreen('gameover-screen');
+
+    // ── Staggered row reveal + count-up animation
+    function animateCount(el, target, prefix, duration, onDone) {
+      if (!el) { if (onDone) onDone(); return; }
+      const start = performance.now();
+      function tick(now) {
+        const t = Math.min((now - start) / duration, 1);
+        const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
+        el.textContent = prefix + Math.floor(eased * target);
+        if (t < 1) requestAnimationFrame(tick);
+        else { el.textContent = prefix + target; if (onDone) onDone(); }
+      }
+      requestAnimationFrame(tick);
+    }
+
+    const rowData = [
+      { id: 'height',    amount: heightCoins, label: '+' },
+      { id: 'enemies',   amount: enemyCoins,  label: '+' },
+      { id: 'collected', amount: collected,   label: '+' },
+      { id: 'bounces',   amount: bounceCoins, label: '+' },
+      { id: 'bosses',    amount: bossCoins,   label: '+', skip: bossCoins === 0 },
+    ];
+
+    let delay = 200;
+    let runningTotal = 0;
+
+    rowData.forEach((row) => {
+      if (row.skip) return;
+      setTimeout(() => {
+        const rowEl = document.getElementById('go-row-' + row.id);
+        const valEl = document.getElementById('go-coins-' + row.id);
+        if (rowEl) rowEl.classList.add('visible');
+        SFX.play('purchase');
+        animateCount(valEl, row.amount, row.label, 600, () => {
+          runningTotal += row.amount;
+          if (totalEl) totalEl.textContent = runningTotal;
+        });
+      }, delay);
+      delay += 350;
+    });
+
+    // Show total with final flash, then reveal buttons
+    setTimeout(() => {
+      animateCount(totalEl, total, '', 800, () => {
+        if (actionsEl) actionsEl.classList.add('visible');
+      });
+    }, delay + 100);
   }
 
   function updateMainMenuStats() {

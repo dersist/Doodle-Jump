@@ -335,6 +335,7 @@ const Enemies = (() => {
     }
     SFX.play('enemy_die');
     Particles.burst(enemy.x + enemy.w/2, enemy.y + enemy.h/2, COLORS[enemy.type]?.glow || '#fff', 12);
+    if (typeof RunStats !== 'undefined') RunStats.enemiesKilled++;
   }
 
   function getAll() { return enemies; }

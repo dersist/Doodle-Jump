@@ -467,6 +467,7 @@ const Bosses = (() => {
     GameState.screenShake = 20;
     UI.showToast(`BOSS DEFEATED! +${coinReward} COINS!`);
     SFX.play('boss_die');
+    if (typeof RunStats !== 'undefined') RunStats.bossesKilled++;
 
     setTimeout(() => { currentBoss = null; }, 2000);
   }

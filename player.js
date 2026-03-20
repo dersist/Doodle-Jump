@@ -206,6 +206,7 @@ const Player = (() => {
         player.slamming = false;
         player.slamLanded = false;
         player.rocketActive = false;
+        if (typeof RunStats !== 'undefined') RunStats.platformsBounced++;
 
         // Slam landing effects (check before clearing flag)
         if (wasSlamming) {

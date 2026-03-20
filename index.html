@@ -154,12 +154,41 @@
   <div id="gameover-screen" class="screen overlay">
     <div class="overlay-panel gameover-panel">
       <div class="gameover-title">SIGNAL LOST</div>
+
       <div class="gameover-stats">
-        <div class="go-stat"><span>HEIGHT</span><span id="go-score">0</span></div>
-        <div class="go-stat"><span>COINS EARNED</span><span id="go-coins">0</span></div>
-        <div class="go-stat"><span>TIME</span><span id="go-time">0:00</span></div>
-        <div class="go-stat best"><span>BEST HEIGHT</span><span id="go-best">0</span></div>
+        <div class="go-stat best"><span>⬆ BEST HEIGHT</span><span id="go-best">0</span></div>
+        <div class="go-stat"><span>📏 HEIGHT</span><span id="go-score">0</span></div>
+        <div class="go-stat"><span>⏱ TIME</span><span id="go-time">0:00</span></div>
       </div>
+
+      <div class="go-coins-title">COINS EARNED</div>
+      <div class="go-breakdown">
+        <div class="go-row" id="go-row-height">
+          <span class="go-row-label">📏 Height Bonus</span>
+          <span class="go-row-val" id="go-coins-height">+0</span>
+        </div>
+        <div class="go-row" id="go-row-enemies">
+          <span class="go-row-label">💀 Enemies Killed</span>
+          <span class="go-row-val" id="go-coins-enemies">+0</span>
+        </div>
+        <div class="go-row" id="go-row-collected">
+          <span class="go-row-label">◈ Coins Collected</span>
+          <span class="go-row-val" id="go-coins-collected">+0</span>
+        </div>
+        <div class="go-row" id="go-row-bounces">
+          <span class="go-row-label">🪄 Platforms Bounced</span>
+          <span class="go-row-val" id="go-coins-bounces">+0</span>
+        </div>
+        <div class="go-row" id="go-row-bosses" style="display:none">
+          <span class="go-row-label">👾 Boss Kills</span>
+          <span class="go-row-val" id="go-coins-bosses">+0</span>
+        </div>
+        <div class="go-row go-total-row">
+          <span class="go-row-label">TOTAL</span>
+          <span class="go-row-val go-total-val" id="go-coins-total">0</span>
+        </div>
+      </div>
+
       <div class="gameover-actions">
         <button class="btn-menu btn-primary" id="btn-replay">▶ TRY AGAIN</button>
         <button class="btn-menu btn-secondary" id="btn-go-shop">◈ UPGRADE</button>

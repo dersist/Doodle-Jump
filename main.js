@@ -206,9 +206,23 @@ function updateCamera() {
 // ── SCORE ────────────────────────────────────────────────────
 let startCameraY = 0; // set in initRun so score is relative to start
 
+// Per-run stat tracking for end screen
+const RunStats = {
+  coinsCollected: 0,
+  enemiesKilled: 0,
+  platformsBounced: 0,
+  bossesKilled: 0,
+  reset() {
+    this.coinsCollected = 0;
+    this.enemiesKilled = 0;
+    this.platformsBounced = 0;
+    this.bossesKilled = 0;
+  }
+};
+
 function updateScore() {
-  // Score = how far cameraY has moved UP from starting position
-  const rawScore = Math.max(0, Math.floor((startCameraY - GameState.cameraY) / 8));
+  // Score updates every frame — one point per pixel of height gained
+  const rawScore = Math.max(0, startCameraY - GameState.cameraY);
   const mult = PlayerUpgrades.getScoreBonus();
   const newScore = Math.floor(rawScore * mult);
   if (newScore > GameState.score) {
@@ -292,6 +306,8 @@ function initRun() {
   GameState.difficultyMult = 1;
   GameState.reviveAvailable= PlayerUpgrades.hasRevive();
   GameState.reviveUsed     = false;
+
+  RunStats.reset();
 
   // Init subsystems
   Platforms.init(GameState.canvasW, GameState.canvasH);
