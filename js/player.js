@@ -1,0 +1,551 @@
+// ═══════════════════════════════════════════
+//  PLAYER.JS — Player stats, movement, render
+// ═══════════════════════════════════════════
+
+const Player = (() => {
+  const W = 32, H = 40;
+
+  function create(canvasW, canvasH) {
+    const jumpBonus = PlayerUpgrades.getJumpBonus();
+    const p = {
+      x: canvasW / 2 - W / 2,
+      y: canvasH - 120,
+      w: W, h: H,
+      vx: 0, vy: 0,
+
+      // Base stats
+      jumpVelocity: Physics.BASE_JUMP * (1 + jumpBonus),
+      jumpVelocityMult: 1,
+      gravity: Physics.BASE_GRAVITY,
+      gravityMult: 1,
+      moveSpeed: Physics.BASE_MOVE_SPEED,
+      moveSpeedMult: 1,
+      airControl: Physics.BASE_AIR_CTRL,
+      maxFallSpeed: Physics.BASE_MAX_FALL,
+      fireRate: 18,        // frames between shots
+      bulletDamage: 1,
+      slamSpeed: 22,
+
+      // Health
+      health: 0,
+      maxHealth: 0,
+      regenTimer: 0,
+      reviveUsed: false,
+
+      // State flags
+      onGround: false,
+      slamming: false,
+      slamLanded: false,
+      rocketActive: false,
+      rocketSteering: false,
+      rocketTimer: 0,
+      dashPhasing: false,
+      shielded: false,
+      shieldHits: 0,
+      shieldTimer: 0,
+      reflectBullets: false,
+      shieldBig: false,
+      invincible: false,
+      invincibleTimer: 0,
+      invincibleFlash: 0,
+
+      // Shoot
+      shootTimer: 0,
+
+      // Animation
+      animFrame: 0,
+      animTimer: 0,
+      facing: 1,   // 1=right -1=left
+      squishY: 1,
+      squishTimer: 0,
+      trail: [],
+
+      // Overdrive
+      overdriveGlow: 0,
+    };
+
+    // Apply health system if purchased
+    if (PlayerUpgrades.hasHealthSystem()) {
+      p.maxHealth = PlayerUpgrades.getMaxHealth();
+      p.health = p.maxHealth;
+    }
+
+    return p;
+  }
+
+  function update(dt, player, canvasW, canvasH) {
+    const timeFactor = GameState.timeSlowTimer > 0 && !GameState.timeSlowPlayerUnaffected
+      ? GameState.timeSlowFactor : 1;
+
+    // ── MOVEMENT ──
+    const speed = player.moveSpeed * player.moveSpeedMult
+      * (GameState.speedBoostTimer > 0 ? 1.6 : 1)
+      * (GameState.speedCutTimer > 0 ? 0.5 : 1);
+
+    if (Input.isMovingLeft()) {
+      player.vx = -speed;
+      player.facing = -1;
+    } else if (Input.isMovingRight()) {
+      player.vx = speed;
+      player.facing = 1;
+    } else {
+      player.vx *= 0.8;
+    }
+
+    // Rocket steering override
+    if (player.rocketActive && player.rocketSteering) {
+      if (Input.isMovingLeft()) player.vx = -speed * 0.6;
+      else if (Input.isMovingRight()) player.vx = speed * 0.6;
+    }
+
+    // ── SHOOTING ──
+    const canShoot = !GameState.gravityFlipped || AbilityUpgrades.flipCanShoot();
+    if (Input.isShooting() && canShoot) {
+      player.shootTimer += dt;
+      const fr = GameState.overdriveTimer > 0 && AbilityUpgrades.overdriveAutoShoot()
+        ? player.fireRate / 2 : player.fireRate;
+      if (player.shootTimer >= fr) {
+        player.shootTimer = 0;
+        firePlayerBullet(player);
+      }
+    } else {
+      player.shootTimer = player.fireRate - 2; // ready to shoot quickly
+    }
+
+    // ── SLAM ──
+    if (Input.isSlamming() && !player.onGround) {
+      if (!player.slamming && !player.rocketActive) {
+        player.slamming = true;
+        player.vy = player.slamSpeed;
+        SFX.play('slam_start');
+      }
+    }
+
+    // ── ROCKET TIMER ──
+    if (player.rocketActive) {
+      player.rocketTimer -= dt;
+      if (player.rocketTimer <= 0) {
+        player.rocketActive = false;
+        // Explosion effect at end
+        Particles.burst(player.x + player.w/2,
+                        player.y + player.h/2 - GameState.cameraY,
+                        '#ff6600', 10);
+      }
+      // Damage trail
+      if (AbilityUpgrades.rocketHasDamageTrail()) {
+        for (const e of Enemies.getAll()) {
+          if (e.dead) continue;
+          if (Physics.playerEnemyCollision(player, e)) {
+            Enemies.hitEnemy(e, 1);
+          }
+        }
+      }
+    }
+
+    // ── PHYSICS ──
+    Physics.applyGravity(player);
+    Physics.applyVelocity(player);
+    Physics.wrapX(player, canvasW);
+
+    // ── COLLISION WITH PLATFORMS ──
+    player.onGround = false;
+    let landed = false;
+
+    for (const p of Platforms.getAll()) {
+      if (p.type === 'phase' && !p.phaseVisible) continue;
+      if (p.broken) continue;
+
+      if (Physics.playerPlatformCollision(player, p)) {
+        // Spiky platform damages player
+        if (p.type === 'spiky') {
+          takeDamage(1);
+          player.vy = player.jumpVelocity * player.jumpVelocityMult * (1 + PlayerUpgrades.getJumpBonus());
+          continue;
+        }
+
+        // Breaking platform
+        if (p.type === 'breaking') {
+          if (player.slamming || AbilityUpgrades.slamBreaksAll()) {
+            p.broken = true;
+            p.breakTimer = 0;
+            continue;
+          }
+          p.broken = true;
+          p.breakTimer = 0;
+        }
+
+        // Land on platform
+        player.y = p.y - player.h;
+        player.onGround = true;
+        landed = true;
+
+        // Jump velocity
+        let jv = player.jumpVelocity * player.jumpVelocityMult;
+
+        if (p.type === 'spring') {
+          jv *= 1.6;
+          SFX.play('spring');
+          player.squishY = 0.5;
+          player.squishTimer = 8;
+        } else if (p.type === 'boost') {
+          jv *= 2.2;
+          SFX.play('boost');
+          player.squishY = 0.4;
+          player.squishTimer = 10;
+        } else {
+          player.squishY = 0.7;
+          player.squishTimer = 5;
+          SFX.play('jump');
+        }
+
+        player.vy = jv;
+        player.slamming = false;
+        player.rocketActive = false;
+
+        // Slam landing effects
+        if (player.slamming || player.slamLanded) {
+          handleSlamLanding(player, p);
+        }
+
+        // Coin on coin platform
+        if (p.type === 'coin_plat' && !p.coinCollected) {
+          p.coinCollected = true;
+          const amount = Math.ceil(3 * (1 + PlayerUpgrades.getCurrencyBoost()));
+          GameState.coins += amount;
+          GameState.totalCoins += amount;
+          Particles.coins(p.x + p.w/2, p.y - GameState.cameraY, amount);
+        }
+
+        break;
+      }
+    }
+
+    // ── SLAM LANDING ──
+    if (player.slamming && !landed) {
+      // Keep slamming
+    }
+
+    // ── GRAVITY FLIP — land on ceiling ──
+    if (GameState.gravityFlipped) {
+      if (player.y <= 0) {
+        player.y = 0;
+        player.vy = Math.abs(player.jumpVelocity * player.jumpVelocityMult);
+        player.onGround = true;
+        SFX.play('jump');
+        player.squishY = 0.7;
+        player.squishTimer = 5;
+      }
+    }
+
+    // ── GAME OVER CHECK — fell below screen ──
+    if (!GameState.gravityFlipped && player.y > GameState.cameraY + canvasH + 100) {
+      if (PlayerUpgrades.hasRevive() && !player.reviveUsed) {
+        player.reviveUsed = true;
+        player.y = GameState.cameraY + canvasH / 2;
+        player.vy = Physics.BASE_JUMP;
+        player.invincible = true;
+        player.invincibleTimer = 180;
+        UI.showToast('REVIVE ACTIVATED!');
+        SFX.play('revive');
+      } else {
+        GameState.gameOver = true;
+      }
+    }
+
+    // ── SHIELD TIMER ──
+    if (player.shielded) {
+      player.shieldTimer -= dt;
+      if (player.shieldTimer <= 0 || player.shieldHits <= 0) {
+        player.shielded = false;
+        if (AbilityUpgrades.shieldExplodes()) {
+          for (const e of Enemies.getAll()) {
+            const dist = Math.hypot(e.x - player.x, e.y - player.y);
+            if (dist < 80) Enemies.hitEnemy(e, 2);
+          }
+          Particles.burst(player.x + player.w/2,
+                          player.y + player.h/2 - GameState.cameraY,
+                          '#00f5ff', 20);
+        }
+      }
+    }
+
+    // ── REGEN ──
+    if (PlayerUpgrades.hasRegen() && player.health < player.maxHealth) {
+      player.regenTimer += dt;
+      if (player.regenTimer >= 120) {
+        player.regenTimer = 0;
+        player.health = Math.min(player.maxHealth, player.health + 1);
+      }
+    }
+
+    // ── INVINCIBLE TIMER ──
+    if (player.invincible) {
+      player.invincibleTimer -= dt;
+      player.invincibleFlash = (player.invincibleFlash + 1) % 8;
+      if (player.invincibleTimer <= 0) {
+        player.invincible = false;
+        player.invincibleFlash = 0;
+      }
+    }
+
+    // ── SQUISH ANIMATION ──
+    if (player.squishTimer > 0) {
+      player.squishTimer--;
+      const t = 1 - player.squishTimer / 8;
+      player.squishY = 0.6 + t * 0.4;
+    } else {
+      player.squishY = 1;
+    }
+
+    // ── TRAIL ──
+    player.trail.unshift({ x: player.x + player.w/2, y: player.y + player.h/2 });
+    if (player.trail.length > 8) player.trail.pop();
+
+    // ── OVERDRIVE GLOW ──
+    if (GameState.overdriveTimer > 0) {
+      player.overdriveGlow = Math.sin(Date.now() * 0.01) * 0.5 + 0.5;
+    } else {
+      player.overdriveGlow = 0;
+    }
+  }
+
+  function handleSlamLanding(player, platform) {
+    const radius = AbilityUpgrades.getSlamRadius(80);
+    const pulses = AbilityUpgrades.slamPulseCount();
+
+    for (let i = 0; i < pulses; i++) {
+      Particles.shockwave(
+        player.x + player.w/2,
+        player.y + player.h - GameState.cameraY,
+        '#ff6600', radius + i * 20
+      );
+    }
+
+    if (AbilityUpgrades.slamDamagesEnemies()) {
+      for (const e of Enemies.getAll()) {
+        const dist = Math.hypot(e.x - player.x, e.y - player.y);
+        if (dist < radius) Enemies.hitEnemy(e, 2);
+      }
+    }
+
+    if (AbilityUpgrades.slamBouncesUp()) {
+      player.vy = player.jumpVelocity * 1.5;
+    }
+
+    GameState.screenShake = 8;
+    SFX.play('slam_land');
+    player.slamLanded = false;
+  }
+
+  function firePlayerBullet(player) {
+    const dmg = player.bulletDamage * (GameState.overdriveTimer > 0 ? 1.5 : 1)
+              * (AbilityUpgrades.slowBoostsDmg() && GameState.timeSlowTimer > 0 ? 1.5 : 1);
+    const spd = AbilityUpgrades.slowBoostsBullets() && GameState.timeSlowTimer > 0 ? -14 : -10;
+    Projectiles.addPlayerBullet(
+      player.x + player.w/2, player.y - 5,
+      0, spd,
+      dmg,
+      {
+        r: 5,
+        color: GameState.overdriveTimer > 0 ? '#ffee00' : '#00f5ff',
+        glow: GameState.overdriveTimer > 0 ? '#ffee00' : '#00f5ff',
+        piercing: AbilityUpgrades.overdriveAutoShoot() && GameState.overdriveTimer > 0,
+      }
+    );
+    SFX.play('shoot');
+  }
+
+  function takeDamage(amount) {
+    const player = GameState.player;
+    if (player.invincible || player.shielded) {
+      if (player.shielded) {
+        player.shieldHits -= amount;
+        if (AbilityUpgrades.shieldConvertsToHp()) {
+          player.health = Math.min(player.maxHealth, player.health + 0.5);
+        }
+        SFX.play('shield_hit');
+      }
+      return;
+    }
+
+    const reducedDmg = amount * AbilityUpgrades.shieldReducesDmg();
+
+    if (PlayerUpgrades.hasHealthSystem()) {
+      player.health -= reducedDmg;
+      UI.updateHealthBar(player.health, player.maxHealth);
+      if (player.health <= 0) {
+        if (PlayerUpgrades.hasRevive() && !player.reviveUsed) {
+          player.reviveUsed = true;
+          player.health = Math.ceil(player.maxHealth / 2);
+          player.invincible = true;
+          player.invincibleTimer = 180;
+          UI.showToast('LAST CHANCE!');
+          SFX.play('revive');
+        } else {
+          GameState.gameOver = true;
+        }
+      }
+    } else {
+      GameState.gameOver = true;
+    }
+
+    // Knockback
+    player.invincible = true;
+    player.invincibleTimer = 60;
+    SFX.play('hurt');
+    GameState.screenShake = 6;
+    Particles.burst(player.x + player.w/2,
+                    player.y + player.h/2 - GameState.cameraY,
+                    '#ff0080', 8);
+  }
+
+  function draw(ctx, player, cameraY) {
+    if (player.invincible && player.invincibleFlash >= 4) return; // flicker
+
+    const drawX = player.x;
+    const drawY = player.y - cameraY;
+    const cx = drawX + player.w / 2;
+    const cy = drawY + player.h / 2;
+    const sy = player.squishY;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(1 / sy, sy);
+    ctx.translate(-cx, -cy);
+
+    // Trail
+    if (GameState.overdriveTimer > 0 || player.rocketActive) {
+      for (let i = 0; i < player.trail.length; i++) {
+        const t = player.trail[i];
+        const alpha = (1 - i / player.trail.length) * 0.3;
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = player.rocketActive ? '#ff6600' : '#ffee00';
+        ctx.beginPath();
+        ctx.arc(t.x, t.y - cameraY, (player.w / 2) * (1 - i / player.trail.length), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // Body glow (overdrive)
+    if (GameState.overdriveTimer > 0) {
+      ctx.shadowColor = '#ffee00';
+      ctx.shadowBlur = 20 + player.overdriveGlow * 15;
+    } else if (player.shielded) {
+      ctx.shadowColor = '#00f5ff';
+      ctx.shadowBlur = 18;
+    } else {
+      ctx.shadowColor = '#00f5ff';
+      ctx.shadowBlur = 10;
+    }
+
+    // Body
+    const bodyGrad = ctx.createRadialGradient(cx, cy - 4, 2, cx, cy, player.w / 2 + 2);
+    if (GameState.overdriveTimer > 0) {
+      bodyGrad.addColorStop(0, '#fff8c0');
+      bodyGrad.addColorStop(0.6, '#ffcc00');
+      bodyGrad.addColorStop(1, '#ff6600');
+    } else {
+      bodyGrad.addColorStop(0, '#00f5ff');
+      bodyGrad.addColorStop(0.6, '#0066ff');
+      bodyGrad.addColorStop(1, '#000066');
+    }
+
+    ctx.fillStyle = bodyGrad;
+    ctx.beginPath();
+    ctx.roundRect(drawX + 2, drawY + 6, player.w - 4, player.h - 6, 6);
+    ctx.fill();
+
+    // Head dome
+    ctx.beginPath();
+    ctx.ellipse(cx, drawY + 8, player.w / 2 - 2, 14, 0, Math.PI, 0);
+    ctx.fill();
+
+    // Visor
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = GameState.overdriveTimer > 0 ? 'rgba(255,238,0,0.7)' : 'rgba(0,255,255,0.5)';
+    ctx.beginPath();
+    ctx.ellipse(cx + player.facing * 2, drawY + 8, 8, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Eyes
+    ctx.fillStyle = '#fff';
+    ctx.shadowColor = '#fff';
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    ctx.arc(cx + player.facing * 2, drawY + 8, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Antenna
+    ctx.strokeStyle = GameState.overdriveTimer > 0 ? '#ffee00' : '#00f5ff';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = ctx.strokeStyle;
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.moveTo(cx, drawY + 2);
+    ctx.lineTo(cx, drawY - 6);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, drawY - 8, 3, 0, Math.PI * 2);
+    ctx.fillStyle = ctx.strokeStyle;
+    ctx.fill();
+
+    // Shield bubble
+    if (player.shielded) {
+      ctx.restore();
+      ctx.save();
+      ctx.translate(cx, cy);
+      const r = player.shieldBig ? player.w * 0.85 : player.w * 0.65;
+      ctx.shadowColor = '#00f5ff';
+      ctx.shadowBlur = 15;
+      ctx.strokeStyle = 'rgba(0,245,255,0.8)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(0,245,255,0.06)';
+      ctx.fill();
+      ctx.translate(-cx, -cy);
+    }
+
+    ctx.restore();
+
+    // Drone display
+    if (GameState.drones) {
+      for (const drone of GameState.drones) {
+        drawDrone(ctx, drone);
+      }
+    }
+  }
+
+  function drawDrone(ctx, drone) {
+    ctx.save();
+    ctx.translate(drone.x, drone.y);
+    const color = drone.elite ? '#ffee00' : '#9900ff';
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 12;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    // Drone body
+    ctx.fillStyle = '#0d0d2e';
+    ctx.beginPath();
+    ctx.roundRect(-8, -6, 16, 12, 3);
+    ctx.fill();
+    ctx.stroke();
+    // Drone eye
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(0, 0, 3, 0, Math.PI * 2);
+    ctx.fill();
+    // Wings
+    ctx.beginPath();
+    ctx.moveTo(-12, 0); ctx.lineTo(-8, -4); ctx.lineTo(-8, 4); ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(12, 0); ctx.lineTo(8, -4); ctx.lineTo(8, 4); ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  return { create, update, draw, takeDamage, W, H };
+})();

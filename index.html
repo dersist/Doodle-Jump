@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEON ASCENT</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- MAIN MENU -->
+  <div id="main-menu" class="screen active">
+    <div class="menu-bg-grid"></div>
+    <div class="menu-content">
+      <div class="title-block">
+        <div class="title-sub">∞ INFINITE ASCENT ∞</div>
+        <h1 class="title-main">NEON<br>ASCENT</h1>
+        <div class="title-version">v2.0 ULTRA</div>
+      </div>
+      <div class="menu-buttons">
+        <button class="btn-menu btn-primary" id="btn-play">▶ LAUNCH</button>
+        <button class="btn-menu btn-secondary" id="btn-shop">◈ UPGRADE LAB</button>
+        <button class="btn-menu btn-secondary" id="btn-abilities">⚡ ABILITIES</button>
+        <button class="btn-menu btn-tertiary" id="btn-settings">⚙ SETTINGS</button>
+      </div>
+      <div class="menu-stats">
+        <div class="stat-item"><span class="stat-label">BEST HEIGHT</span><span class="stat-val" id="best-score-display">0</span></div>
+        <div class="stat-item"><span class="stat-label">TOTAL COINS</span><span class="stat-val" id="total-coins-display">0</span></div>
+        <div class="stat-item"><span class="stat-label">RUNS</span><span class="stat-val" id="runs-display">0</span></div>
+      </div>
+    </div>
+    <div class="scanlines"></div>
+  </div>
+
+  <!-- GAME SCREEN -->
+  <div id="game-screen" class="screen">
+    <canvas id="gameCanvas"></canvas>
+    <!-- HUD OVERLAY -->
+    <div id="hud">
+      <div id="hud-left">
+        <div id="score-display">
+          <div class="hud-label">HEIGHT</div>
+          <div class="hud-value" id="score-val">0</div>
+        </div>
+        <div id="coins-display">
+          <div class="hud-label">◈ COINS</div>
+          <div class="hud-value" id="coins-val">0</div>
+        </div>
+        <div id="multiplier-display" style="display:none">
+          <div class="hud-label">MULT</div>
+          <div class="hud-value" id="mult-val">x1</div>
+        </div>
+      </div>
+      <div id="hud-center">
+        <div id="health-bar-container" style="display:none">
+          <div class="hud-label">HP</div>
+          <div id="health-bar-outer">
+            <div id="health-bar-inner"></div>
+          </div>
+          <div id="health-text">3/3</div>
+        </div>
+        <div id="speedrun-timer" style="display:none">
+          <div class="hud-label">TIME</div>
+          <div class="hud-value" id="timer-val">0:00.00</div>
+        </div>
+      </div>
+      <div id="hud-right">
+        <div id="ability-slots">
+          <div class="ability-slot" id="slot-1" data-slot="1">
+            <div class="slot-key">1</div>
+            <div class="slot-icon">—</div>
+            <div class="slot-cooldown-bar"><div class="slot-cooldown-fill"></div></div>
+            <div class="slot-name">EMPTY</div>
+          </div>
+          <div class="ability-slot" id="slot-2" data-slot="2">
+            <div class="slot-key">2</div>
+            <div class="slot-icon">—</div>
+            <div class="slot-cooldown-bar"><div class="slot-cooldown-fill"></div></div>
+            <div class="slot-name">EMPTY</div>
+          </div>
+          <div class="ability-slot" id="slot-3" data-slot="3">
+            <div class="slot-key">3</div>
+            <div class="slot-icon">—</div>
+            <div class="slot-cooldown-bar"><div class="slot-cooldown-fill"></div></div>
+            <div class="slot-name">EMPTY</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- PAUSE BUTTON -->
+    <button id="pause-btn" class="hud-btn">⏸</button>
+  </div>
+
+  <!-- PAUSE MENU -->
+  <div id="pause-menu" class="screen overlay">
+    <div class="overlay-panel">
+      <h2>PAUSED</h2>
+      <button class="btn-menu btn-primary" id="btn-resume">▶ RESUME</button>
+      <button class="btn-menu btn-secondary" id="btn-shop-ingame">◈ QUICK SHOP</button>
+      <button class="btn-menu btn-danger" id="btn-quit">✕ QUIT RUN</button>
+    </div>
+  </div>
+
+  <!-- SHOP SCREEN -->
+  <div id="shop-screen" class="screen">
+    <div class="shop-header">
+      <button class="btn-back" id="shop-back">← BACK</button>
+      <h2 class="shop-title">⚗ UPGRADE LAB</h2>
+      <div class="shop-coins"><span>◈</span><span id="shop-coins-val">0</span></div>
+    </div>
+    <div class="shop-body">
+      <div class="shop-tabs">
+        <button class="shop-tab active" data-tab="abilities">ABILITIES</button>
+        <button class="shop-tab" data-tab="upgrades">STAT UPGRADES</button>
+      </div>
+      <div id="shop-abilities" class="shop-panel active">
+        <div id="ability-list"></div>
+      </div>
+      <div id="shop-upgrades" class="shop-panel">
+        <div id="upgrade-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ABILITY EQUIP SCREEN -->
+  <div id="ability-screen" class="screen">
+    <div class="shop-header">
+      <button class="btn-back" id="ability-back">← BACK</button>
+      <h2 class="shop-title">⚡ ABILITY LOADOUT</h2>
+    </div>
+    <div class="ability-equip-body">
+      <div class="equip-slots-row">
+        <div class="equip-slot-card" data-slot="1">
+          <div class="equip-slot-label">SLOT 1 — [1]</div>
+          <div class="equip-slot-content" id="equip-slot-1">EMPTY</div>
+          <button class="btn-small btn-danger" onclick="window.unequipSlot(1)">UNEQUIP</button>
+        </div>
+        <div class="equip-slot-card" data-slot="2">
+          <div class="equip-slot-label">SLOT 2 — [2]</div>
+          <div class="equip-slot-content" id="equip-slot-2">EMPTY</div>
+          <button class="btn-small btn-danger" onclick="window.unequipSlot(2)">UNEQUIP</button>
+        </div>
+        <div class="equip-slot-card" data-slot="3">
+          <div class="equip-slot-label">SLOT 3 — [3]</div>
+          <div class="equip-slot-content" id="equip-slot-3">EMPTY</div>
+          <button class="btn-small btn-danger" onclick="window.unequipSlot(3)">UNEQUIP</button>
+        </div>
+      </div>
+      <div id="owned-abilities-list"></div>
+    </div>
+  </div>
+
+  <!-- GAME OVER SCREEN -->
+  <div id="gameover-screen" class="screen overlay">
+    <div class="overlay-panel gameover-panel">
+      <div class="gameover-title">SIGNAL LOST</div>
+      <div class="gameover-stats">
+        <div class="go-stat"><span>HEIGHT</span><span id="go-score">0</span></div>
+        <div class="go-stat"><span>COINS EARNED</span><span id="go-coins">0</span></div>
+        <div class="go-stat"><span>TIME</span><span id="go-time">0:00</span></div>
+        <div class="go-stat best"><span>BEST HEIGHT</span><span id="go-best">0</span></div>
+      </div>
+      <div class="gameover-actions">
+        <button class="btn-menu btn-primary" id="btn-replay">▶ TRY AGAIN</button>
+        <button class="btn-menu btn-secondary" id="btn-go-shop">◈ UPGRADE</button>
+        <button class="btn-menu btn-tertiary" id="btn-go-menu">⌂ MENU</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS SCREEN -->
+  <div id="settings-screen" class="screen">
+    <div class="shop-header">
+      <button class="btn-back" id="settings-back">← BACK</button>
+      <h2 class="shop-title">⚙ SETTINGS</h2>
+    </div>
+    <div class="settings-body">
+      <div class="setting-row">
+        <span>Sound Effects</span>
+        <button class="toggle-btn" id="toggle-sfx" data-on="true">ON</button>
+      </div>
+      <div class="setting-row">
+        <span>Screen Shake</span>
+        <button class="toggle-btn" id="toggle-shake" data-on="true">ON</button>
+      </div>
+      <div class="setting-row">
+        <span>Scanlines</span>
+        <button class="toggle-btn" id="toggle-scanlines" data-on="true">ON</button>
+      </div>
+      <div class="setting-row danger-row">
+        <span>Reset All Progress</span>
+        <button class="btn-small btn-danger" id="btn-reset">RESET</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOSS ANNOUNCEMENT -->
+  <div id="boss-announce" class="boss-announce-overlay" style="display:none">
+    <div class="boss-text" id="boss-name-text">BOSS INCOMING</div>
+  </div>
+
+  <!-- NOTIFICATION TOAST -->
+  <div id="toast" class="toast" style="display:none"></div>
+
+  <script src="input.js"></script>
+  <script src="physics.js"></script>
+  <script src="platforms.js"></script>
+  <script src="enemies.js"></script>
+  <script src="projectiles.js"></script>
+  <script src="items.js"></script>
+  <script src="abilityUpgrades.js"></script>
+  <script src="abilities.js"></script>
+  <script src="inventory.js"></script>
+  <script src="playerUpgrades.js"></script>
+  <script src="player.js"></script>
+  <script src="bosses.js"></script>
+  <script src="shop.js"></script>
+  <script src="ui.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
