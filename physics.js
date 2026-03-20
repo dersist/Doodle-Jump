@@ -44,21 +44,21 @@ const Physics = (() => {
     const platW = platform.w, platH = platform.h;
     const platX = platform.x, platY = platform.y;
 
-    // Only collide from above (player falling downward, or up if gravity flipped)
     if (!GameState.gravityFlipped) {
+      // Player moving downward (or just starting to fall - vy can be 0)
       if (player.vy >= 0 &&
           px + pw > platX + 4 &&
           px < platX + platW - 4 &&
-          py + ph <= platY + 4 &&
-          py + ph + player.vy >= platY - 2) {
+          py + ph > platY - 2 &&
+          py + ph <= platY + platH * 0.6) {
         return true;
       }
     } else {
       if (player.vy <= 0 &&
           px + pw > platX + 4 &&
           px < platX + platW - 4 &&
-          py >= platY + platH - 4 &&
-          py + player.vy <= platY + platH + 2) {
+          py < platY + platH + 2 &&
+          py >= platY + platH * 0.4) {
         return true;
       }
     }

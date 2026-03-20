@@ -302,8 +302,8 @@ function initRun() {
   // Create player
   GameState.player = Player.create(GameState.canvasW, GameState.canvasH);
 
-  // Set camera so player starts at 60% down the screen (comfortable starting view)
-  GameState.cameraY = GameState.player.y - GameState.canvasH * 0.6;
+  // Set camera so player starts at ~50% down the screen
+  GameState.cameraY = GameState.player.y - GameState.canvasH * 0.5;
 
   // Reset input
   Input.clearFrame();

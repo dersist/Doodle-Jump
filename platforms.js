@@ -35,14 +35,27 @@ const Platforms = (() => {
 
   function init(canvasW, canvasH) {
     platforms = [];
-    topY = canvasH;
 
-    // Spawn starting platforms (dense)
-    for (let y = canvasH - 60; y > -200; y -= 60) {
-      const x = Math.random() * (canvasW - PLATFORM_W);
+    // Player spawns at canvasH - 120, feet at canvasH - 80
+    // Place platforms densely from well below player up through top of screen
+    const GAP = 55; // tight gap so player always has something to land on
+
+    // Start from below player spawn and go all the way up
+    for (let y = canvasH - 40; y > -300; y -= GAP) {
+      // Guarantee a platform near center on the first few rows (under player)
+      let x;
+      if (y > canvasH - 200) {
+        // First few rows: center-ish so player definitely lands
+        x = canvasW / 2 - PLATFORM_W / 2 + (Math.random() - 0.5) * (canvasW * 0.3);
+      } else {
+        x = Math.random() * (canvasW - PLATFORM_W - 10) + 5;
+      }
+      x = Math.max(5, Math.min(canvasW - PLATFORM_W - 5, x));
       platforms.push(createPlatform(TYPE.NORMAL, x, y, canvasW));
     }
-    topY = -200;
+
+    topY = -300;
+    spawnGap = 60;
   }
 
   function createPlatform(type, x, y, canvasW) {
@@ -93,19 +106,20 @@ const Platforms = (() => {
     }
   }
 
-  function spawnAbove(canvasW, score) {
-    const gap = Math.max(60, spawnGap - score * 0.012);
-    while (topY > -canvasW) {
-      topY -= gap + Math.random() * 30;
+  function spawnAbove(canvasW, cameraY, score) {
+    const gap = Math.max(55, spawnGap - score * 0.01);
+    // Spawn until we're well above the camera top
+    while (topY > cameraY - 200) {
+      topY -= gap + Math.random() * 25;
       const type = getTypeForHeight(score);
-      const x = Math.random() * (canvasW - PLATFORM_W);
+      const x = Math.random() * (canvasW - PLATFORM_W - 10) + 5;
       platforms.push(createPlatform(type, x, topY, canvasW));
     }
   }
 
   function update(dt, cameraY, canvasW, canvasH, score) {
     // Spawn new platforms above camera view
-    spawnAbove(canvasW, score);
+    spawnAbove(canvasW, cameraY, score);
 
     // Update platform behaviors
     for (const p of platforms) {

@@ -9,9 +9,9 @@ const Player = (() => {
     const jumpBonus = PlayerUpgrades.getJumpBonus();
     const p = {
       x: canvasW / 2 - W / 2,
-      y: canvasH - 120,
+      y: canvasH - 160,   // spawn higher so first platform at canvasH-40 is clearly below feet
       w: W, h: H,
-      vx: 0, vy: 0,
+      vx: 0, vy: Physics.BASE_JUMP * 0.6, // small initial upward boost so first jump feels right
 
       // Base stats
       jumpVelocity: Physics.BASE_JUMP * (1 + jumpBonus),
@@ -156,11 +156,13 @@ const Player = (() => {
       if (p.broken) continue;
 
       if (Physics.playerPlatformCollision(player, p)) {
-        // Spiky platform damages player
+        // Spiky platform damages player but still bounces them
         if (p.type === 'spiky') {
+          player.y = p.y - player.h;
+          player.vy = player.jumpVelocity * player.jumpVelocityMult;
+          player.onGround = true;
           takeDamage(1);
-          player.vy = player.jumpVelocity * player.jumpVelocityMult * (1 + PlayerUpgrades.getJumpBonus());
-          continue;
+          break;
         }
 
         // Breaking platform
@@ -178,6 +180,8 @@ const Player = (() => {
         player.y = p.y - player.h;
         player.onGround = true;
         landed = true;
+
+        const wasSlamming = player.slamming;
 
         // Jump velocity
         let jv = player.jumpVelocity * player.jumpVelocityMult;
@@ -200,10 +204,11 @@ const Player = (() => {
 
         player.vy = jv;
         player.slamming = false;
+        player.slamLanded = false;
         player.rocketActive = false;
 
-        // Slam landing effects
-        if (player.slamming || player.slamLanded) {
+        // Slam landing effects (check before clearing flag)
+        if (wasSlamming) {
           handleSlamLanding(player, p);
         }
 
