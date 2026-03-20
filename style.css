@@ -456,6 +456,7 @@ html, body {
 .gameover-actions {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 10px;
   width: 100%;
 }

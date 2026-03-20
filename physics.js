@@ -3,10 +3,10 @@
 // ═══════════════════════════════════════════
 
 const Physics = (() => {
-  const BASE_GRAVITY = 0.45;
-  const BASE_JUMP = -13.5;
+  const BASE_GRAVITY = 0.28;
+  const BASE_JUMP = -17;
   const BASE_MOVE_SPEED = 5.5;
-  const BASE_MAX_FALL = 16;
+  const BASE_MAX_FALL = 14;
   const BASE_AIR_CTRL = 0.85;
 
   function getGravity() {

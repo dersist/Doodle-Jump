@@ -204,14 +204,18 @@ function updateCamera() {
 }
 
 // ── SCORE ────────────────────────────────────────────────────
+let startCameraY = 0; // set in initRun so score is relative to start
+
 function updateScore() {
-  const rawScore = Math.floor(-GameState.cameraY / 10);
+  // Score = how far cameraY has moved UP from starting position
+  const rawScore = Math.max(0, Math.floor((startCameraY - GameState.cameraY) / 8));
   const mult = PlayerUpgrades.getScoreBonus();
   const newScore = Math.floor(rawScore * mult);
   if (newScore > GameState.score) {
     GameState.score = newScore;
     if (newScore > GameState.bestScore) {
       GameState.bestScore = newScore;
+      Save.save();
     }
   }
 }
@@ -304,12 +308,14 @@ function initRun() {
 
   // Set camera: player starts near bottom of screen so platforms above are visible
   GameState.cameraY = GameState.player.y - GameState.canvasH * 0.7;
+  startCameraY = GameState.cameraY; // anchor for score calculation
 
   // Reset input
   Input.clearFrame();
 
   UI.showScreen('game-screen');
   UI.resetSpeedrunTimer();
+  UI.startSpeedrunTimer(); // auto-start timer every run
   lastTime = performance.now();
   requestAnimationFrame(gameLoop);
 }

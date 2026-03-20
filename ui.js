@@ -470,6 +470,14 @@ const UI = (() => {
     }
   }
 
+  function startSpeedrunTimer() {
+    speedrunActive = true;
+    speedrunStart = Date.now();
+    speedrunMs = 0;
+    const el = document.getElementById('speedrun-timer');
+    if (el) el.style.display = 'block';
+  }
+
   function resetSpeedrunTimer() {
     speedrunMs = 0;
     speedrunStart = Date.now();
@@ -636,7 +644,7 @@ const UI = (() => {
   return {
     showScreen, hidePause, showPause, showToast, showBossAnnounce,
     updateScore, updateCoins, updateHealthBar, updateAbilityHUD, updateAbilityCooldowns,
-    updateSpeedrunTimer, toggleSpeedrunTimer, resetSpeedrunTimer, getElapsedSeconds, getElapsedFormatted,
+    updateSpeedrunTimer, toggleSpeedrunTimer, startSpeedrunTimer, resetSpeedrunTimer, getElapsedSeconds, getElapsedFormatted,
     showGameOver, updateMainMenuStats, initAbilityEquipScreen, renderEquipScreen, initSettings,
   };
 })();
