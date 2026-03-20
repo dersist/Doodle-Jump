@@ -239,17 +239,8 @@ const Player = (() => {
 
     // ── GAME OVER CHECK — fell below screen ──
     if (!GameState.gravityFlipped && player.y > GameState.cameraY + canvasH + 100) {
-      if (PlayerUpgrades.hasRevive() && !player.reviveUsed) {
-        player.reviveUsed = true;
-        player.y = GameState.cameraY + canvasH / 2;
-        player.vy = Physics.BASE_JUMP;
-        player.invincible = true;
-        player.invincibleTimer = 180;
-        UI.showToast('REVIVE ACTIVATED!');
-        SFX.play('revive');
-      } else {
-        GameState.gameOver = true;
-      }
+      if (typeof handleGameOver === 'function') handleGameOver();
+      else GameState.gameOver = true;
     }
 
     // ── SHIELD TIMER ──

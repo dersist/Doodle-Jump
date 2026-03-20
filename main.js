@@ -115,11 +115,12 @@ const canvas = document.getElementById('gameCanvas');
 const ctx    = canvas.getContext('2d');
 
 function resizeCanvas() {
-  const container = document.getElementById('game-screen');
-  canvas.width  = container.clientWidth  || 400;
-  canvas.height = container.clientHeight || 700;
-  GameState.canvasW = canvas.width;
-  GameState.canvasH = canvas.height;
+  const W = window.innerWidth  || 400;
+  const H = window.innerHeight || 700;
+  canvas.width  = W;
+  canvas.height = H;
+  GameState.canvasW = W;
+  GameState.canvasH = H;
 }
 
 window.addEventListener('resize', () => {
@@ -191,14 +192,12 @@ function updateCamera() {
   const p = GameState.player;
   if (!p) return;
 
-  // Track the highest point the player has reached
-  const worldY = p.y + GameState.cameraY;
-  if (worldY < GameState.highestY) {
-    GameState.highestY = worldY;
-  }
-
-  // Camera follows player upward — camera Y is the world Y of the top of the screen
+  // Target: keep player at 40% from top of screen
+  // cameraY = world Y that corresponds to the TOP of the screen
+  // screenY = worldY - cameraY  =>  cameraY = worldY - screenY
   const targetCamY = p.y - GameState.canvasH * 0.4;
+
+  // Camera only moves UP (cameraY only decreases)
   if (targetCamY < GameState.cameraY) {
     GameState.cameraY = targetCamY;
   }
@@ -232,7 +231,8 @@ function handleGameOver() {
     GameState.reviveUsed = true;
     const p = GameState.player;
     p.health = 1;
-    p.y = GameState.canvasH * 0.4;
+    // Respawn in world space at visible screen position
+    p.y = GameState.cameraY + GameState.canvasH * 0.4;
     p.vy = Physics.BASE_JUMP;
     p.invincible = true;
     p.invincibleTimer = 180;
@@ -254,15 +254,14 @@ function handleGameOver() {
   }, 600);
 }
 
-// ── INIT NEW RUN ─────────────────────────────────────────────
 function initRun() {
   // Load persistent data
   Save.load();
 
+  resizeCanvas();
+
   GameState.score          = 0;
   GameState.coins          = 0;
-  GameState.cameraY        = 0;
-  GameState.highestY       = 0;
   GameState.gravityFlipped = false;
   GameState.gravityMult    = 1;
   GameState.jumpVelocityMult = PlayerUpgrades.getJumpBonus();
@@ -290,8 +289,6 @@ function initRun() {
   GameState.reviveAvailable= PlayerUpgrades.hasRevive();
   GameState.reviveUsed     = false;
 
-  resizeCanvas();
-
   // Init subsystems
   Platforms.init(GameState.canvasW, GameState.canvasH);
   Enemies.init();
@@ -305,18 +302,22 @@ function initRun() {
   // Create player
   GameState.player = Player.create(GameState.canvasW, GameState.canvasH);
 
+  // Set camera so player starts at 60% down the screen (comfortable starting view)
+  GameState.cameraY = GameState.player.y - GameState.canvasH * 0.6;
+
   // Reset input
   Input.clearFrame();
 
   UI.showScreen('game-screen');
   UI.resetSpeedrunTimer();
+  lastTime = performance.now();
   requestAnimationFrame(gameLoop);
 }
 
 // ── MAIN GAME LOOP ───────────────────────────────────────────
 let lastTime = 0;
 function gameLoop(timestamp) {
-  if (!GameState.running) return;
+  if (!GameState.running && !GameState.gameOver) return;
 
   const rawDt = Math.min((timestamp - lastTime) / (1000 / 60), 3);
   lastTime = timestamp;
@@ -334,14 +335,16 @@ function gameLoop(timestamp) {
     }
   }
 
-  if (!GameState.paused) {
+  if (!GameState.paused && !GameState.gameOver) {
     update(dt, rawDt);
   }
 
   render();
   Input.clearFrame();
 
-  requestAnimationFrame(gameLoop);
+  if (!GameState.gameOver) {
+    requestAnimationFrame(gameLoop);
+  }
 }
 
 // ── UPDATE ───────────────────────────────────────────────────
@@ -418,13 +421,6 @@ function update(dt, rawDt) {
 
   // Speedrun timer toggle
   if (Input.isTimerToggle()) UI.toggleSpeedrunTimer();
-
-  // Game over check
-  const fallenOff = p.y > H + 100 && !GameState.gravityFlipped;
-  const fallenOffFlipped = p.y < -100 && GameState.gravityFlipped;
-  if ((fallenOff || fallenOffFlipped) && !GameState.gameOver) {
-    handleGameOver();
-  }
 }
 
 // ── RENDER ───────────────────────────────────────────────────
@@ -442,15 +438,12 @@ function render() {
   }
 
   ctx.save();
-  ctx.translate(sx, sy);
+  if (sx || sy) ctx.translate(sx, sy);
 
   // Background (screen-space)
   BG.draw(cam);
 
-  // World-space objects: translate canvas so world Y 0 aligns with camera top
-  ctx.save();
-  ctx.translate(0, -cam);
-
+  // All draw modules handle their own cameraY subtraction
   Platforms.draw(ctx, cam, false);
   Coins.draw(ctx, cam);
   Enemies.draw(ctx, cam);
@@ -458,10 +451,6 @@ function render() {
   if (GameState.bossActive) Bosses.draw(ctx, cam);
   if (p) Player.draw(ctx, p, cam);
   Particles.draw(ctx);
-
-  ctx.restore();
-
-  // Screen-space overlays (boss HUD drawn inside Bosses.draw already)
 
   // Scanlines
   if (GameState.settings.scanlines) drawScanlines(W, H);
@@ -570,6 +559,9 @@ function returnToMainMenu() {
 window.addEventListener('DOMContentLoaded', () => {
   resizeCanvas();
   Save.load();
+
+  // Init shop tab switching
+  Shop.init();
 
   // Apply saved settings to UI
   UI.initSettings();

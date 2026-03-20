@@ -170,6 +170,8 @@ const SFX = (() => {
     break:        () => { playTone(200, 'sawtooth', 0.15, 0.25); },
     teleport:     () => { playTone(700, 'sine', 0.2, 0.3); playTone(400, 'sine', 0.15, 0.2); },
     explosion:    () => { playTone(150, 'sawtooth', 0.3, 0.4); playTone(100, 'square', 0.25, 0.4); },
+    gameover:     () => { playTone(300, 'sawtooth', 0.4, 0.3); setTimeout(()=>playTone(200,'sawtooth',0.5,0.5),300); setTimeout(()=>playTone(100,'square',0.6,0.8),700); },
+    click:        () => playTone(600, 'sine', 0.05, 0.1),
   };
 
   function play(soundName) {

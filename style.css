@@ -39,15 +39,17 @@ html, body {
 
 /* ══════════════════════ SCREENS */
 .screen {
-  position: absolute; inset: 0;
+  position: fixed; inset: 0;
   display: none;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  background: var(--bg);
+  overflow-y: auto;
 }
 .screen.active { display: flex; }
 .screen.overlay {
-  background: rgba(5,5,20,0.85);
+  background: rgba(5,5,20,0.92);
   backdrop-filter: blur(4px);
   z-index: 100;
 }
@@ -216,14 +218,16 @@ html, body {
 /* ══════════════════════ GAME SCREEN */
 #game-screen {
   display: none;
-  position: absolute; inset: 0;
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
 }
 #game-screen.active { display: block; }
 
 #gameCanvas {
   display: block;
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  top: 0; left: 0;
 }
 
 /* ══════════════════════ HUD */
