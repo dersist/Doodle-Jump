@@ -37,32 +37,29 @@ const Physics = (() => {
     return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
   }
 
-  // Player-platform collision: lands on top of platform while falling
+  // Player-platform collision: sweep test — catches all speeds, no tunneling
   function playerPlatformCollision(player, platform) {
-    const pw = player.w, ph = player.h;
     const px = player.x, py = player.y;
-    const platW = platform.w, platH = platform.h;
+    const pw = player.w, ph = player.h;
     const platX = platform.x, platY = platform.y;
+    const platW = platform.w, platH = platform.h;
+
+    // Horizontal overlap (small inset so edge-clips don't count)
+    if (px + pw <= platX + 4 || px >= platX + platW - 4) return false;
 
     if (!GameState.gravityFlipped) {
-      // Player moving downward (or just starting to fall - vy can be 0)
-      if (player.vy >= 0 &&
-          px + pw > platX + 4 &&
-          px < platX + platW - 4 &&
-          py + ph > platY - 2 &&
-          py + ph <= platY + platH * 0.6) {
-        return true;
-      }
+      if (player.vy < 0) return false; // moving upward — pass through
+      // Where were feet BEFORE this frame's movement?
+      const prevFeet = py + ph - player.vy;
+      const currFeet = py + ph;
+      // Swept through or landed on platform top
+      return prevFeet <= platY + 2 && currFeet >= platY - 2;
     } else {
-      if (player.vy <= 0 &&
-          px + pw > platX + 4 &&
-          px < platX + platW - 4 &&
-          py < platY + platH + 2 &&
-          py >= platY + platH * 0.4) {
-        return true;
-      }
+      if (player.vy > 0) return false;
+      const prevTop = py - player.vy;
+      const currTop = py;
+      return prevTop >= platY + platH - 2 && currTop <= platY + platH + 2;
     }
-    return false;
   }
 
   // Bullet vs enemy: circle/rect

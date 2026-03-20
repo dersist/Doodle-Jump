@@ -378,11 +378,13 @@ const Player = (() => {
           UI.showToast('LAST CHANCE!');
           SFX.play('revive');
         } else {
-          GameState.gameOver = true;
+          if (typeof handleGameOver === 'function') handleGameOver();
+          else GameState.gameOver = true;
         }
       }
     } else {
-      GameState.gameOver = true;
+      if (typeof handleGameOver === 'function') handleGameOver();
+      else GameState.gameOver = true;
     }
 
     // Knockback
