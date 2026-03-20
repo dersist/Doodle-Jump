@@ -35,27 +35,25 @@ const Platforms = (() => {
 
   function init(canvasW, canvasH) {
     platforms = [];
+    spawnGap = 60;
 
-    // Player spawns at canvasH - 120, feet at canvasH - 80
-    // Place platforms densely from well below player up through top of screen
-    const GAP = 55; // tight gap so player always has something to land on
+    const GAP = 60;
 
-    // Start from below player spawn and go all the way up
-    for (let y = canvasH - 40; y > -300; y -= GAP) {
-      // Guarantee a platform near center on the first few rows (under player)
-      let x;
-      if (y > canvasH - 200) {
-        // First few rows: center-ish so player definitely lands
-        x = canvasW / 2 - PLATFORM_W / 2 + (Math.random() - 0.5) * (canvasW * 0.3);
-      } else {
-        x = Math.random() * (canvasW - PLATFORM_W - 10) + 5;
-      }
-      x = Math.max(5, Math.min(canvasW - PLATFORM_W - 5, x));
+    // Fill screen bottom-to-top with normal platforms
+    for (let y = canvasH - 30; y > -200; y -= GAP) {
+      const spread = y > canvasH - 250 ? 0.3 : 0.7;
+      let x = canvasW / 2 - PLATFORM_W / 2 + (Math.random() - 0.5) * canvasW * spread;
+      x = Math.max(10, Math.min(canvasW - PLATFORM_W - 10, x));
       platforms.push(createPlatform(TYPE.NORMAL, x, y, canvasW));
     }
 
-    topY = -300;
-    spawnGap = 60;
+    // Player spawns at y=canvasH-160, feet at canvasH-120.
+    // Force a wide platform right under the player's feet.
+    const gp = createPlatform(TYPE.NORMAL, canvasW / 2 - 50, canvasH - 110, canvasW);
+    gp.w = 100;
+    platforms.unshift(gp);
+
+    topY = -200;
   }
 
   function createPlatform(type, x, y, canvasW) {

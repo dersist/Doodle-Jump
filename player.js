@@ -9,9 +9,9 @@ const Player = (() => {
     const jumpBonus = PlayerUpgrades.getJumpBonus();
     const p = {
       x: canvasW / 2 - W / 2,
-      y: canvasH - 160,   // spawn higher so first platform at canvasH-40 is clearly below feet
+      y: canvasH - 160,
       w: W, h: H,
-      vx: 0, vy: Physics.BASE_JUMP * 0.6, // small initial upward boost so first jump feels right
+      vx: 0, vy: 0,  // start stationary - will fall onto guaranteed platform below
 
       // Base stats
       jumpVelocity: Physics.BASE_JUMP * (1 + jumpBonus),

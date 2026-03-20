@@ -302,8 +302,8 @@ function initRun() {
   // Create player
   GameState.player = Player.create(GameState.canvasW, GameState.canvasH);
 
-  // Set camera so player starts at ~50% down the screen
-  GameState.cameraY = GameState.player.y - GameState.canvasH * 0.5;
+  // Set camera: player starts near bottom of screen so platforms above are visible
+  GameState.cameraY = GameState.player.y - GameState.canvasH * 0.7;
 
   // Reset input
   Input.clearFrame();
@@ -559,6 +559,9 @@ function returnToMainMenu() {
 window.addEventListener('DOMContentLoaded', () => {
   resizeCanvas();
   Save.load();
+
+  // MUST init input first so keyboard/touch events are registered
+  Input.init();
 
   // Init shop tab switching
   Shop.init();
