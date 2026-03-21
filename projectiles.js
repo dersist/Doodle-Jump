@@ -73,16 +73,43 @@ const Projectiles = (() => {
         continue;
       }
 
+      // Ricochet off screen edges
+      if (b.canRicochet && !b.hasRicocheted) {
+        if (b.x < 0 || b.x > canvasW) { b.vx *= -1; b.hasRicocheted = true; b.x = Math.max(0, Math.min(canvasW, b.x)); }
+      }
+
       // Hit enemies
       for (const e of enemies) {
         if (e.dead) continue;
         if (Physics.bulletEnemyCollision(b, e)) {
+          // Poison: mark enemy
+          if (b.poison && !e.poisoned) {
+            e.poisoned = true;
+            e.poisonTimer = 240; // 4 seconds at 60fps
+            e.poisonDmgTimer = 0;
+          }
           const killed = Enemies.hitEnemy(e, b.damage);
           if (killed) {
             GameState.score += e.scoreVal;
             const coinReward = Math.ceil(e.scoreVal / 10 * PlayerUpgrades.getCurrencyBoost());
             GameState.coins += coinReward;
             GameState.totalCoins += coinReward;
+            if (typeof RunStats !== 'undefined') RunStats.coinsCollected += coinReward;
+
+            // Chain lightning: arc to 2 nearby enemies
+            if (b.chainLightning) {
+              let chained = 0;
+              for (const other of enemies) {
+                if (other.dead || other === e) continue;
+                const dist = Math.hypot(other.x - e.x, other.y - e.y);
+                if (dist < 120) {
+                  Enemies.hitEnemy(other, b.damage);
+                  Particles.burst(other.x + other.w/2, other.y + other.h/2 - cameraY, '#ffee00', 6);
+                  chained++;
+                  if (chained >= 2) break;
+                }
+              }
+            }
           }
           if (!b.piercing) { b.dead = true; break; }
           else { b.hitsLeft--; if (b.hitsLeft <= 0) { b.dead = true; break; } }
@@ -95,11 +122,25 @@ const Projectiles = (() => {
         for (const e of enemies) {
           if (e.dead) continue;
           const dist = Math.hypot(e.x + e.w/2 - cx, e.y + e.h/2 - cy);
-          if (dist < 60) Enemies.hitEnemy(e, b.damage * 0.5);
+          if (dist < 70) Enemies.hitEnemy(e, b.damage * 0.6);
         }
-        Particles.burst(cx, cy - cameraY, '#ff6600', 16);
+        Particles.burst(cx, cy - cameraY, '#ff6600', 18);
+        Particles.shockwave(cx, cy - cameraY, '#ff6600', 70);
         SFX.play('explosion');
       }
+    }
+
+    // Poison tick on all enemies
+    for (const e of enemies) {
+      if (!e.poisoned || e.dead) continue;
+      e.poisonTimer -= dt;
+      e.poisonDmgTimer = (e.poisonDmgTimer || 0) + dt;
+      if (e.poisonDmgTimer >= 60) { // 1 damage per second
+        e.poisonDmgTimer = 0;
+        Enemies.hitEnemy(e, 1);
+        Particles.burst(e.x + e.w/2, e.y + e.h/2 - cameraY, '#00ff88', 3);
+      }
+      if (e.poisonTimer <= 0) { e.poisoned = false; e.poisonDmgTimer = 0; }
     }
 
     // Enemy bullets

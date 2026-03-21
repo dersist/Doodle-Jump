@@ -18,6 +18,7 @@ const Shop = (() => {
   function open(fromGame = false) {
     renderAbilities();
     renderPlayerUpgrades();
+    renderGunUpgrades();
     document.getElementById('shop-coins-val').textContent = GameState.totalCoins;
 
     if (fromGame) {
@@ -268,7 +269,98 @@ const Shop = (() => {
   }
 
   // Expose for inline onclick
+  function renderGunUpgrades() {
+    const container = document.getElementById('gun-list');
+    if (!container) return;
+    container.innerHTML = '';
+
+    for (const def of GunUpgrades.getDefs()) {
+      const state = GunUpgrades.getState(def.id);
+      const unlocked = GunUpgrades.isUnlocked(def.id);
+      const allParts = GunUpgrades.allPartsOwned(def.id);
+      const partsOwned = state.parts.length;
+
+      const card = document.createElement('div');
+      card.className = 'player-upgrade-card gun-mod-card' + (unlocked ? ' gun-unlocked' : '');
+
+      // Header
+      const header = document.createElement('div');
+      header.className = 'pup-header';
+      header.innerHTML = `
+        <div class="pup-icon">${def.icon}</div>
+        <div class="pup-name">${def.name}</div>
+        <div class="pup-level" style="color:${unlocked ? 'var(--neon-green)' : partsOwned === 5 ? 'var(--neon-yellow)' : 'var(--text-dim)'}">
+          ${unlocked ? '✓ UNLOCKED' : partsOwned + '/5 PARTS'}
+        </div>
+      `;
+      card.appendChild(header);
+
+      const descEl = document.createElement('div');
+      descEl.style.cssText = 'font-size:11px;color:var(--text-dim);padding:0 4px 8px;letter-spacing:1px;';
+      descEl.textContent = def.desc;
+      card.appendChild(descEl);
+
+      if (!unlocked) {
+        // Parts grid
+        const partsGrid = document.createElement('div');
+        partsGrid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px;';
+
+        for (const part of def.parts) {
+          const owned = GunUpgrades.hasPart(def.id, part.id);
+          const btn = document.createElement('button');
+          btn.className = 'pup-level-btn ' + (owned ? 'purchased' : (GameState.totalCoins >= part.price ? 'can-buy' : 'cant-afford'));
+          btn.innerHTML = `<div style="font-size:10px;opacity:0.7">${part.name}</div><div>${owned ? '✓' : part.price + '◈'}</div>`;
+          if (!owned) {
+            btn.addEventListener('click', () => {
+              if (GunUpgrades.buyPart(def.id, part.id)) {
+                document.getElementById('shop-coins-val').textContent = GameState.totalCoins;
+                UI.showToast(`Part acquired: ${part.name}!`);
+                SFX.play('purchase');
+                renderGunUpgrades();
+              }
+            });
+          }
+          partsGrid.appendChild(btn);
+        }
+        card.appendChild(partsGrid);
+
+        // Unlock button (only when all parts owned)
+        if (allParts) {
+          const unlockRow = document.createElement('div');
+          unlockRow.style.cssText = 'display:flex;justify-content:center;margin-top:4px;';
+          const canAfford = GameState.totalCoins >= def.unlockPrice;
+          const unlockBtn = document.createElement('button');
+          unlockBtn.className = 'btn-menu btn-primary';
+          unlockBtn.style.cssText = 'font-size:11px;padding:8px 20px;letter-spacing:2px;';
+          unlockBtn.textContent = `🔓 UNLOCK — ${def.unlockPrice}◈`;
+          if (!canAfford) {
+            unlockBtn.disabled = true;
+            unlockBtn.style.opacity = '0.4';
+          } else {
+            unlockBtn.addEventListener('click', () => {
+              if (GunUpgrades.unlock(def.id)) {
+                document.getElementById('shop-coins-val').textContent = GameState.totalCoins;
+                UI.showToast(`${def.name} UNLOCKED!`);
+                SFX.play('purchase');
+                renderGunUpgrades();
+              }
+            });
+          }
+          unlockRow.appendChild(unlockBtn);
+          card.appendChild(unlockRow);
+        } else {
+          const hint = document.createElement('div');
+          hint.style.cssText = 'font-size:10px;color:var(--text-dim);text-align:center;padding:4px;letter-spacing:1px;';
+          hint.textContent = `Collect all 5 parts to unlock (${def.unlockPrice}◈)`;
+          card.appendChild(hint);
+        }
+      }
+
+      container.appendChild(card);
+    }
+  }
+
   window.Shop = { sellAbility };
 
-  return { init, open, renderAbilities, renderPlayerUpgrades, buyAbility, buyUpgrade, sellAbility };
+  return { init, open, renderAbilities, renderPlayerUpgrades, renderGunUpgrades, buyAbility, buyUpgrade, sellAbility };
 })();

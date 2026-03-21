@@ -288,6 +288,7 @@ const Save = (() => {
       ownedAbilities: GameState.ownedAbilities,
       inventorySlots: GameState.inventorySlots,
       playerUpgradeLevels: GameState.playerUpgradeLevels,
+      gunUpgrades: GameState.gunUpgrades,
       settings: GameState.settings,
     };
     try { localStorage.setItem(KEY, JSON.stringify(data)); } catch(e) {}
@@ -304,6 +305,7 @@ const Save = (() => {
       if (data.ownedAbilities) GameState.ownedAbilities = data.ownedAbilities;
       if (data.inventorySlots) GameState.inventorySlots = data.inventorySlots;
       if (data.playerUpgradeLevels) GameState.playerUpgradeLevels = data.playerUpgradeLevels;
+      if (data.gunUpgrades) GameState.gunUpgrades = data.gunUpgrades;
       if (data.settings) GameState.settings = { ...GameState.settings, ...data.settings };
     } catch(e) {}
   }

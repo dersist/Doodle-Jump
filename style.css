@@ -1081,3 +1081,14 @@ html, body {
 }
 
 .coin-pop { animation: coinPop 0.3s ease; }
+
+/* ══════════════════════ GUN MODS */
+.gun-mod-card {
+  border: 1px solid rgba(255, 100, 0, 0.25);
+  background: rgba(255, 80, 0, 0.04);
+}
+.gun-mod-card.gun-unlocked {
+  border-color: rgba(0, 255, 136, 0.4);
+  background: rgba(0, 255, 136, 0.05);
+}
+.gun-mod-card .pup-header { border-bottom: 1px solid rgba(255,100,0,0.15); }

@@ -102,14 +102,15 @@ const Player = (() => {
     const canShoot = !GameState.gravityFlipped || AbilityUpgrades.flipCanShoot();
     if (Input.isShooting() && canShoot) {
       player.shootTimer += dt;
-      const fr = GameState.overdriveTimer > 0 && AbilityUpgrades.overdriveAutoShoot()
-        ? player.fireRate / 2 : player.fireRate;
+      const fr = player.fireRate
+        * GunUpgrades.getFireRateMult()
+        * (GameState.overdriveTimer > 0 && AbilityUpgrades.overdriveAutoShoot() ? 0.5 : 1);
       if (player.shootTimer >= fr) {
         player.shootTimer = 0;
         firePlayerBullet(player);
       }
     } else {
-      player.shootTimer = player.fireRate - 2; // ready to shoot quickly
+      player.shootTimer = player.fireRate - 2;
     }
 
     // ── SLAM ──
@@ -383,22 +384,52 @@ const Player = (() => {
   }
 
   function firePlayerBullet(player) {
-    const dmg = player.bulletDamage * (GameState.overdriveTimer > 0 ? 1.5 : 1)
-              * (AbilityUpgrades.slowBoostsDmg() && GameState.timeSlowTimer > 0 ? 1.5 : 1);
-    const spd = AbilityUpgrades.slowBoostsBullets() && GameState.timeSlowTimer > 0 ? 14 : 10;
+    const baseDmg = player.bulletDamage
+      * (GameState.overdriveTimer > 0 ? 1.5 : 1)
+      * (AbilityUpgrades.slowBoostsDmg() && GameState.timeSlowTimer > 0 ? 1.5 : 1)
+      * GunUpgrades.getDamageMult();
 
-    // Fire straight up — homing in projectiles.js curves them toward enemies
-    Projectiles.addPlayerBullet(
-      player.x + player.w/2, player.y - 5,
-      0, -spd,
-      dmg,
-      {
-        r: 5,
-        color: GameState.overdriveTimer > 0 ? '#ffee00' : '#00f5ff',
-        glow:  GameState.overdriveTimer > 0 ? '#ffee00' : '#00f5ff',
-        piercing: AbilityUpgrades.overdriveAutoShoot() && GameState.overdriveTimer > 0,
-      }
-    );
+    const baseSpd = (AbilityUpgrades.slowBoostsBullets() && GameState.timeSlowTimer > 0 ? 14 : 10)
+      * GunUpgrades.getBulletSpeedMult();
+
+    const r      = GunUpgrades.getBulletRadius();
+    const color  = GameState.overdriveTimer > 0 ? '#ffee00' : '#00f5ff';
+    const pierce = GunUpgrades.getPiercingHits() > 0 || (AbilityUpgrades.overdriveAutoShoot() && GameState.overdriveTimer > 0);
+    const hitsLeft = GunUpgrades.getPiercingHits() || 1;
+    const mega   = GunUpgrades.shouldFireMega();
+
+    // Mega bullet overrides everything
+    if (mega) {
+      Projectiles.addPlayerBullet(player.x + player.w/2, player.y - 5, 0, -baseSpd * 0.6,
+        baseDmg * 4, { r: 14, color: '#ff00ff', glow: '#ff00ff', piercing: true, hitsLeft: 5,
+          explosive: true, life: 180 });
+      SFX.play('boost');
+      return;
+    }
+
+    const count   = GunUpgrades.getBulletCount();
+    const spread  = GunUpgrades.getBulletSpread();
+
+    for (let i = 0; i < count; i++) {
+      // Spread angle: centre bullet at 0, others offset
+      const angleOffset = count === 1 ? 0 : (i - (count - 1) / 2) * spread;
+      const vx = Math.sin(angleOffset) * baseSpd;
+      const vy = -Math.cos(angleOffset) * baseSpd;
+
+      Projectiles.addPlayerBullet(
+        player.x + player.w/2 + i * (count > 1 ? 6 : 0), player.y - 5,
+        vx, vy, baseDmg,
+        {
+          r, color, glow: color,
+          piercing: pierce, hitsLeft,
+          explosive: GunUpgrades.isExplosive(),
+          canRicochet: GunUpgrades.canRicochet(),
+          poison: GunUpgrades.hasPoison(),
+          chainLightning: GunUpgrades.hasChainLightning(),
+          life: 180,
+        }
+      );
+    }
     SFX.play('shoot');
   }
 

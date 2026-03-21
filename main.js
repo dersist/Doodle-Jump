@@ -95,6 +95,9 @@ const GameState = {
   // Player upgrade levels  { health:0, scoreMult:0, jumpMult:0, currencyBoost:0, cdrBoost:0 }
   playerUpgradeLevels: {},
 
+  // Gun upgrade state { id: { parts: [], unlocked: bool } }
+  gunUpgrades: {},
+
   // Settings
   settings: { sfx: true, shake: true, scanlines: true },
 
