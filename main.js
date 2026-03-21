@@ -279,6 +279,9 @@ function handleGameOver() {
 }
 
 function initRun() {
+  // Always reset loop guard so Launch and Space work regardless of previous state
+  loopRunning = false;
+
   // Load persistent data
   Save.load();
 
