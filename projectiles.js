@@ -43,30 +43,32 @@ const Projectiles = (() => {
     for (const b of playerBullets) {
       if (b.dead) continue;
 
-      // Homing: nudge velocity toward nearest enemy
+      // Homing: strongly steer toward nearest enemy each frame
       let nearestE = null, nearestD = Infinity;
       for (const e of enemies) {
         if (e.dead) continue;
         const d = Math.hypot(e.x + e.w/2 - b.x, e.y + e.h/2 - b.y);
         if (d < nearestD) { nearestD = d; nearestE = e; }
       }
-      if (nearestE && nearestD < 300) {
+      if (nearestE && nearestD < 500) {
         const tx = nearestE.x + nearestE.w/2 - b.x;
         const ty = nearestE.y + nearestE.h/2 - b.y;
         const dist = Math.hypot(tx, ty);
-        const homingStr = 0.18;
-        b.vx += (tx / dist) * homingStr;
-        b.vy += (ty / dist) * homingStr;
-        // Cap speed
+        const strength = 2.5 * dt; // strong continuous homing
+        b.vx += (tx / dist) * strength;
+        b.vy += (ty / dist) * strength;
+        // Maintain consistent speed
         const spd = Math.hypot(b.vx, b.vy);
-        const maxSpd = 12;
-        if (spd > maxSpd) { b.vx = b.vx/spd*maxSpd; b.vy = b.vy/spd*maxSpd; }
+        const targetSpd = 11;
+        if (spd > 0) { b.vx = b.vx/spd*targetSpd; b.vy = b.vy/spd*targetSpd; }
       }
 
-      b.x += b.vx;
-      b.y += b.vy;
-      b.life--;
-      if (b.life <= 0 || b.x < -20 || b.x > canvasW + 20) {
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+      b.life -= dt;
+      const bScreenY = b.y - cameraY;
+      if (b.life <= 0 || b.x < -30 || b.x > canvasW + 30 ||
+          bScreenY < -100 || bScreenY > canvasH + 100) {
         b.dead = true;
         continue;
       }
@@ -103,9 +105,9 @@ const Projectiles = (() => {
     // Enemy bullets
     for (const b of enemyBullets) {
       if (b.dead) continue;
-      b.x += b.vx;
-      b.y += b.vy;
-      b.life--;
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+      b.life -= dt;
       if (b.life <= 0) { b.dead = true; continue; }
 
       // Hit player

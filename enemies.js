@@ -101,20 +101,19 @@ const Enemies = (() => {
     for (const e of enemies) {
       if (e.dead) continue;
 
-      // Movement based on type
+      // Movement based on type — all multiplied by dt so time distort works
       switch (e.type) {
         case TYPES.FLOATER:
-          e.x += e.vx;
+          e.x += e.vx * dt;
           if (e.x <= 0 || e.x + e.w >= canvasW) e.vx *= -1;
           break;
 
         case TYPES.SHOOTER:
-          e.x += e.vx;
+          e.x += e.vx * dt;
           if (e.x <= 0 || e.x + e.w >= canvasW) e.vx *= -1;
           e.shootTimer += dt;
           if (e.shootTimer >= e.shootInterval) {
             e.shootTimer = 0;
-            // Fire at player
             const dx = px - (e.x + e.w / 2);
             const dy = py - (e.y + e.h / 2);
             const dist = Math.hypot(dx, dy);
@@ -133,48 +132,50 @@ const Enemies = (() => {
           const dx = px - (e.x + e.w / 2);
           const dy = py - (e.y + e.h / 2);
           const dist = Math.hypot(dx, dy);
-          if (dist > 5) {
-            const spd = 1.8 * scale.speed;
-            e.vx += (dx / dist) * spd * 0.1;
-            e.vy += (dy / dist) * spd * 0.1;
-            const maxSpd = spd * 1.5;
-            e.vx = Math.max(-maxSpd, Math.min(maxSpd, e.vx));
-            e.vy = Math.max(-maxSpd, Math.min(maxSpd, e.vy));
+          // Chase only within 220px, idle beyond 320px
+          if (dist > 25 && dist < 220) {
+            const spd = Math.min(0.7, 0.7 * scale.speed) * dt;
+            e.vx += (dx / dist) * spd * 0.10;
+            e.vy += (dy / dist) * spd * 0.10;
+          } else if (dist > 320) {
+            // Drift back to idle float
+            e.vx *= 0.92;
+            e.vy += 0.05 * dt; // gentle fall
           }
-          e.x += e.vx;
-          e.y += e.vy;
-          e.vx *= 0.97;
-          e.vy *= 0.97;
+          const maxSpd = 1.4;
+          e.vx = Math.max(-maxSpd, Math.min(maxSpd, e.vx));
+          e.vy = Math.max(-maxSpd, Math.min(maxSpd, e.vy));
+          e.x += e.vx * dt;
+          e.y += e.vy * dt;
+          e.vx *= 0.96;
+          e.vy *= 0.96;
           break;
         }
 
         case TYPES.SPINNER:
-          e.orbitAngle += e.orbitSpeed;
+          e.orbitAngle += e.orbitSpeed * dt;
           if (e.orbitCenterX === 0) { e.orbitCenterX = e.x; e.orbitCenterY = e.y; }
           e.x = e.orbitCenterX + Math.cos(e.orbitAngle) * e.orbitRadius;
           e.y = e.orbitCenterY + Math.sin(e.orbitAngle) * e.orbitRadius;
-          e.orbitCenterX += (px - e.orbitCenterX) * 0.003;
-          e.orbitCenterY += (py - e.orbitCenterY) * 0.003;
-          e.angle += 0.05;
+          e.orbitCenterX += (px - e.orbitCenterX) * 0.003 * dt;
+          e.orbitCenterY += (py - e.orbitCenterY) * 0.003 * dt;
+          e.angle += 0.05 * dt;
           break;
 
         case TYPES.SPLITTER:
-          e.x += e.vx;
-          e.y += e.vy * 0.5;
+          e.x += e.vx * dt;
+          e.y += e.vy * 0.5 * dt;
           if (e.x <= 0 || e.x + e.w >= canvasW) e.vx *= -1;
           break;
       }
 
-      // Wrap X
       Physics.wrapX(e, canvasW);
-
-      // Hit flash timer
-      if (e.hitFlash > 0) e.hitFlash--;
+      if (e.hitFlash > 0) e.hitFlash -= dt;
     }
 
-    // Remove dead enemies below screen
+    // Remove dead + offscreen enemies
     const cullY = cameraY + canvasH + 300;
-    enemies = enemies.filter(e => !e.dead || e.y < cullY);
+    enemies = enemies.filter(e => !e.dead && e.y < cullY);
   }
 
   function draw(ctx, cameraY) {

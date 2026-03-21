@@ -16,7 +16,7 @@ const Input = (() => {
       if (!keys[e.code]) justPressed[e.code] = true;
       keys[e.code] = true;
       // Prevent page scroll during gameplay
-      if (['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) {
+      if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) {
         e.preventDefault();
       }
     });
@@ -52,29 +52,33 @@ const Input = (() => {
   }
 
   function isDown(code) {
-    if (code === 'ArrowLeft' || code === 'KeyA') return keys[code] || touchLeft;
+    if (code === 'ArrowLeft'  || code === 'KeyA') return keys[code] || touchLeft;
     if (code === 'ArrowRight' || code === 'KeyD') return keys[code] || touchRight;
-    if (code === 'ArrowUp' || code === 'KeyW') return keys[code] || touchShoot;
     return !!keys[code];
   }
 
-  function wasJustPressed(code) {
-    return !!justPressed[code];
-  }
-
-  function wasJustReleased(code) {
-    return !!justReleased[code];
-  }
+  function wasJustPressed(code) { return !!justPressed[code]; }
+  function wasJustReleased(code) { return !!justReleased[code]; }
 
   function clearFrame() {
-    for (const k in justPressed) delete justPressed[k];
+    for (const k in justPressed)  delete justPressed[k];
     for (const k in justReleased) delete justReleased[k];
   }
 
-  function isMovingLeft()  { return isDown('ArrowLeft') || isDown('KeyA'); }
-  function isMovingRight() { return isDown('ArrowRight') || isDown('KeyD'); }
-  function isShooting()    { return isDown('Space') || isDown('ArrowUp') || isDown('KeyW'); }
-  function isSlamming()    { return isDown('ArrowDown') || isDown('KeyS') || isDown('ShiftLeft'); }
+  function isMovingLeft()   { return isDown('ArrowLeft')  || isDown('KeyA'); }
+  function isMovingRight()  { return isDown('ArrowRight') || isDown('KeyD'); }
+  // Shoot: hold W or ArrowUp (touch centre)
+  function isShooting()     { return isDown('ArrowUp') || isDown('KeyW') || touchShoot; }
+  // Slam: S, ArrowDown, or Shift
+  function isSlamming()     { return isDown('ArrowDown') || isDown('KeyS') || isDown('ShiftLeft'); }
+  // Space = quick-restart (just-press, not hold)
+  function isQuickRestart() { return wasJustPressed('Space'); }
+  // P = pause toggle in-game
+  function isPausePressed() { return wasJustPressed('KeyP'); }
+  // Escape = context-aware (handled in main.js update)
+  function isEscapePressed(){ return wasJustPressed('Escape'); }
+  // T = toggle speedrun timer
+  function isTimerToggle()  { return wasJustPressed('KeyT'); }
 
   function getAbilitySlot() {
     if (wasJustPressed('Digit1') || wasJustPressed('Numpad1')) return 1;
@@ -83,10 +87,9 @@ const Input = (() => {
     return 0;
   }
 
-  function isPausePressed() { return wasJustPressed('Escape') || wasJustPressed('KeyP'); }
-  function isTimerToggle() { return wasJustPressed('KeyT'); }
-
-  return { init, isDown, wasJustPressed, wasJustReleased, clearFrame,
-           isMovingLeft, isMovingRight, isShooting, isSlamming, getAbilitySlot,
-           isPausePressed, isTimerToggle };
+  return {
+    init, isDown, wasJustPressed, wasJustReleased, clearFrame,
+    isMovingLeft, isMovingRight, isShooting, isSlamming,
+    isQuickRestart, getAbilitySlot, isPausePressed, isEscapePressed, isTimerToggle,
+  };
 })();

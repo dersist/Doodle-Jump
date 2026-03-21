@@ -278,10 +278,11 @@ const Player = (() => {
       // Keep slamming
     }
 
-    // ── GRAVITY FLIP — land on ceiling ──
+    // ── GRAVITY FLIP — bounce off top of visible screen ──
     if (GameState.gravityFlipped) {
-      if (player.y <= 0) {
-        player.y = 0;
+      const screenTop = GameState.cameraY + 20; // world Y of screen top + margin
+      if (player.y <= screenTop) {
+        player.y = screenTop;
         player.vy = Math.abs(player.jumpVelocity * player.jumpVelocityMult);
         player.onGround = true;
         SFX.play('jump');
@@ -384,34 +385,12 @@ const Player = (() => {
   function firePlayerBullet(player) {
     const dmg = player.bulletDamage * (GameState.overdriveTimer > 0 ? 1.5 : 1)
               * (AbilityUpgrades.slowBoostsDmg() && GameState.timeSlowTimer > 0 ? 1.5 : 1);
-
-    // Find nearest enemy above the player for homing
-    let vx = 0, vy = -10;
     const spd = AbilityUpgrades.slowBoostsBullets() && GameState.timeSlowTimer > 0 ? 14 : 10;
-    let nearestEnemy = null, nearestDist = Infinity;
-    for (const e of Enemies.getAll()) {
-      if (e.dead) continue;
-      const ex = e.x + e.w / 2, ey = e.y + e.h / 2;
-      // Prefer enemies above or at player level
-      const dist = Math.hypot(ex - (player.x + player.w/2), ey - (player.y + player.h/2));
-      if (dist < nearestDist && dist < 400) {
-        nearestDist = dist;
-        nearestEnemy = e;
-      }
-    }
-    if (nearestEnemy) {
-      const dx = (nearestEnemy.x + nearestEnemy.w/2) - (player.x + player.w/2);
-      const dy = (nearestEnemy.y + nearestEnemy.h/2) - (player.y + player.h/2);
-      const dist = Math.hypot(dx, dy);
-      vx = (dx / dist) * spd;
-      vy = (dy / dist) * spd;
-    } else {
-      vy = -spd;
-    }
 
+    // Fire straight up — homing in projectiles.js curves them toward enemies
     Projectiles.addPlayerBullet(
       player.x + player.w/2, player.y - 5,
-      vx, vy,
+      0, -spd,
       dmg,
       {
         r: 5,
@@ -480,6 +459,8 @@ const Player = (() => {
 
     ctx.save();
     ctx.translate(cx, cy);
+    // Flip vertically when gravity is reversed
+    if (GameState.gravityFlipped) ctx.scale(1, -1);
     ctx.scale(1 / sy, sy);
     ctx.translate(-cx, -cy);
 

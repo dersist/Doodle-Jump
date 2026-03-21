@@ -378,7 +378,26 @@ function update(dt, rawDt) {
   const H = GameState.canvasH;
   const cam = GameState.cameraY;
 
-  // Pause check
+  // Escape — in-game opens pause; while paused goes to main menu
+  if (Input.isEscapePressed()) {
+    if (!GameState.paused) {
+      GameState.paused = true;
+      UI.showScreen('pause-menu');
+    } else {
+      GameState.paused  = false;
+      GameState.running = false;
+      returnToMainMenu();
+    }
+    return;
+  }
+
+  // Space = quick restart from anywhere in game
+  if (Input.isQuickRestart()) {
+    initRun();
+    return;
+  }
+
+  // P = pause toggle
   if (Input.isPausePressed()) {
     GameState.paused = true;
     UI.showScreen('pause-menu');
@@ -420,13 +439,6 @@ function update(dt, rawDt) {
 
   // Projectiles
   Projectiles.update(dt, cam, Enemies.getAll(), p, W, H);
-
-  // Bosses
-  if (GameState.bossActive) {
-    Bosses.update(dt, p);
-  } else {
-    Bosses.checkSpawn(GameState.score);
-  }
 
   // Coins
   Coins.update(dt, p, cam, H);
@@ -472,7 +484,6 @@ function render() {
   Coins.draw(ctx, cam);
   Enemies.draw(ctx, cam);
   Projectiles.draw(ctx, cam);
-  if (GameState.bossActive) Bosses.draw(ctx, cam);
   if (p) Player.draw(ctx, p, cam);
   Particles.draw(ctx);
 
@@ -592,6 +603,16 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Apply saved settings to UI
   UI.initSettings();
+
+  // Global Escape: on non-game screens always go to main menu
+  document.addEventListener('keydown', (e) => {
+    if (e.code !== 'Escape') return;
+    if (GameState.running) return; // handled in game loop
+    const active = document.querySelector('.screen.active');
+    if (active && active.id !== 'main-menu') {
+      returnToMainMenu();
+    }
+  });
 
   // Wire all button listeners
   wireButtons();
