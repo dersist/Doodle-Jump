@@ -98,9 +98,9 @@ const Player = (() => {
       else if (Input.isMovingRight()) player.vx = speed * 0.6;
     }
 
-    // ── SHOOTING ──
+    // ── AUTO-SHOOT — always fires, no key required ──
     const canShoot = !GameState.gravityFlipped || AbilityUpgrades.flipCanShoot();
-    if (Input.isShooting() && canShoot) {
+    if (canShoot) {
       player.shootTimer += dt;
       const fr = player.fireRate
         * GunUpgrades.getFireRateMult()
@@ -109,8 +109,6 @@ const Player = (() => {
         player.shootTimer = 0;
         firePlayerBullet(player);
       }
-    } else {
-      player.shootTimer = player.fireRate - 2;
     }
 
     // ── SLAM ──

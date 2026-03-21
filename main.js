@@ -334,17 +334,25 @@ function initRun() {
 
   UI.showScreen('game-screen');
   UI.resetSpeedrunTimer();
-  UI.startSpeedrunTimer(); // auto-start timer every run
-  lastTime = performance.now();
-  requestAnimationFrame(gameLoop);
+  UI.startSpeedrunTimer();
+  startLoop();
 }
 
 // ── MAIN GAME LOOP ───────────────────────────────────────────
 let lastTime = 0;
-function gameLoop(timestamp) {
-  if (!GameState.running && !GameState.gameOver) return;
+let loopRunning = false; // guard: only one RAF loop at a time
 
-  const rawDt = Math.min((timestamp - lastTime) / (1000 / 60), 3);
+function startLoop() {
+  if (loopRunning) return;
+  loopRunning = true;
+  lastTime = performance.now();
+  requestAnimationFrame(gameLoop);
+}
+
+function gameLoop(timestamp) {
+  if (!GameState.running && !GameState.gameOver) { loopRunning = false; return; }
+
+  const rawDt = lastTime === 0 ? 1 : Math.min((timestamp - lastTime) / (1000 / 60), 2);
   lastTime = timestamp;
 
   // Time-slow factor affects game tick speed
@@ -371,6 +379,8 @@ function gameLoop(timestamp) {
 
   if (!GameState.gameOver) {
     requestAnimationFrame(gameLoop);
+  } else {
+    loopRunning = false;
   }
 }
 
@@ -391,12 +401,6 @@ function update(dt, rawDt) {
       GameState.running = false;
       returnToMainMenu();
     }
-    return;
-  }
-
-  // Space = quick restart from anywhere in game
-  if (Input.isQuickRestart()) {
-    initRun();
     return;
   }
 
@@ -536,8 +540,7 @@ function wireButtons() {
     GameState.paused = false;
     UI.hidePause();
     UI.showScreen('game-screen');
-    lastTime = performance.now();
-    requestAnimationFrame(gameLoop);
+    startLoop();
   });
 
   document.getElementById('pause-btn')?.addEventListener('click', () => {
@@ -606,6 +609,17 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Apply saved settings to UI
   UI.initSettings();
+
+  // Global Space = start new game from ANY screen (throttled)
+  let lastSpaceRestart = 0;
+  document.addEventListener('keydown', (e) => {
+    if (e.code !== 'Space') return;
+    const now = Date.now();
+    if (now - lastSpaceRestart < 1000) return; // 1s cooldown prevents spam lag
+    lastSpaceRestart = now;
+    e.preventDefault();
+    initRun();
+  });
 
   // Global Escape: on non-game screens always go to main menu
   document.addEventListener('keydown', (e) => {

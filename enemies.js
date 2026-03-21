@@ -24,12 +24,13 @@ const Enemies = (() => {
   };
 
   function getScaling(score) {
-    const tier = Math.floor(score / 500);
+    // Smooth scaling: every 300 score = 1 tier
+    const tier = Math.min(Math.floor(score / 300), 10);
     return {
-      health: 1 + tier * 0.5,
-      speed: 1 + tier * 0.15,
-      damage: 1 + tier * 0.3,
-      scoreVal: 10 + tier * 5,
+      health:   1 + tier * 0.6,          // 1hp → 7hp at tier 10
+      speed:    1 + tier * 0.12,          // gentle speed ramp
+      damage:   1 + Math.floor(tier / 3), // 1 → 2 at tier 3, → 3 at tier 6, → 4 at tier 9
+      scoreVal: 10 + tier * 8,
     };
   }
 
@@ -59,13 +60,18 @@ const Enemies = (() => {
     enemies.push({
       type,
       x: Math.random() * (canvasW - w),
-      y: cameraY - 80,
+      y: cameraY - 80,          // world Y (above screen top)
+      screenY: 80,               // screen-relative Y — locked for persistence
+      useScreenY: true,          // render using screenY while persisting
+      persistHeight: 600 + Math.random() * 400, // stay on screen for this many world-px
+      spawnCameraY: cameraY,     // camera Y when spawned
       w, h,
       vx: (Math.random() * 2 - 1) * 1.5 * scale.speed,
-      vy: 0.3 + Math.random() * 0.4,
+      vy: 0,
       health: Math.ceil(2 * scale.health),
       maxHealth: Math.ceil(2 * scale.health),
       scoreVal: scale.scoreVal,
+      scale,
       shootTimer: 0,
       shootInterval: 120 + Math.random() * 80,
       angle: 0,
@@ -76,7 +82,6 @@ const Enemies = (() => {
       orbitCenterY: 0,
       hitFlash: 0,
       dead: false,
-      scale,
     });
   }
 
@@ -96,16 +101,29 @@ const Enemies = (() => {
       spawnEnemy(score, canvasW, cameraY);
     }
 
-    const scale = getScaling(score);
-
     for (const e of enemies) {
       if (e.dead) continue;
 
-      // Movement based on type — all multiplied by dt so time distort works
+      // Persistence: if within persist window, keep enemy at screen-relative Y
+      // so they don't scroll off when player jumps
+      const heightGained = e.spawnCameraY - cameraY; // positive = player went up
+      if (e.useScreenY && heightGained < e.persistHeight) {
+        // Enemy stays at fixed screen-space Y; only horizontal movement applies
+        e.y = cameraY + e.screenY;
+      } else {
+        // Persistence expired — convert to world-Y mode and fall away
+        e.useScreenY = false;
+      }
+
+      // Movement — use screen-space px/py for targeting while persisting
+      const targetX = e.useScreenY ? px : px;
+      const targetY = e.useScreenY ? (cameraY + e.screenY) : py;
+
       switch (e.type) {
         case TYPES.FLOATER:
           e.x += e.vx * dt;
           if (e.x <= 0 || e.x + e.w >= canvasW) e.vx *= -1;
+          if (e.useScreenY) e.screenY += Math.sin(Date.now() * 0.002) * 0.3; // gentle float
           break;
 
         case TYPES.SHOOTER:
@@ -132,39 +150,43 @@ const Enemies = (() => {
           const dx = px - (e.x + e.w / 2);
           const dy = py - (e.y + e.h / 2);
           const dist = Math.hypot(dx, dy);
-          // Chase only within 220px, idle beyond 320px
           if (dist > 25 && dist < 220) {
-            const spd = Math.min(0.7, 0.7 * scale.speed) * dt;
+            const spd = Math.min(0.7, 0.7 * e.scale.speed) * dt;
             e.vx += (dx / dist) * spd * 0.10;
-            e.vy += (dy / dist) * spd * 0.10;
+            if (!e.useScreenY) e.vy += (dy / dist) * spd * 0.10;
           } else if (dist > 320) {
-            // Drift back to idle float
             e.vx *= 0.92;
-            e.vy += 0.05 * dt; // gentle fall
+            if (!e.useScreenY) e.vy *= 0.92;
           }
           const maxSpd = 1.4;
           e.vx = Math.max(-maxSpd, Math.min(maxSpd, e.vx));
-          e.vy = Math.max(-maxSpd, Math.min(maxSpd, e.vy));
+          if (!e.useScreenY) e.vy = Math.max(-maxSpd, Math.min(maxSpd, e.vy));
           e.x += e.vx * dt;
-          e.y += e.vy * dt;
+          if (!e.useScreenY) e.y += e.vy * dt;
           e.vx *= 0.96;
-          e.vy *= 0.96;
+          if (!e.useScreenY) e.vy *= 0.96;
           break;
         }
 
         case TYPES.SPINNER:
           e.orbitAngle += e.orbitSpeed * dt;
           if (e.orbitCenterX === 0) { e.orbitCenterX = e.x; e.orbitCenterY = e.y; }
+          if (e.useScreenY) {
+            // Orbit around a screen-fixed centre
+            e.orbitCenterX += (px - e.orbitCenterX) * 0.003 * dt;
+            e.orbitCenterY = e.y; // keep screen-fixed vertical centre
+          } else {
+            e.orbitCenterX += (px - e.orbitCenterX) * 0.003 * dt;
+            e.orbitCenterY += (py - e.orbitCenterY) * 0.003 * dt;
+          }
           e.x = e.orbitCenterX + Math.cos(e.orbitAngle) * e.orbitRadius;
           e.y = e.orbitCenterY + Math.sin(e.orbitAngle) * e.orbitRadius;
-          e.orbitCenterX += (px - e.orbitCenterX) * 0.003 * dt;
-          e.orbitCenterY += (py - e.orbitCenterY) * 0.003 * dt;
           e.angle += 0.05 * dt;
           break;
 
         case TYPES.SPLITTER:
           e.x += e.vx * dt;
-          e.y += e.vy * 0.5 * dt;
+          if (!e.useScreenY) e.y += e.vy * 0.5 * dt;
           if (e.x <= 0 || e.x + e.w >= canvasW) e.vx *= -1;
           break;
       }
@@ -173,10 +195,11 @@ const Enemies = (() => {
       if (e.hitFlash > 0) e.hitFlash -= dt;
     }
 
-    // Remove dead + offscreen enemies
-    const cullY = cameraY + canvasH + 300;
-    enemies = enemies.filter(e => !e.dead && e.y < cullY);
+    // Cull: only remove enemies that are in world-mode AND below screen
+    const cullY = cameraY + canvasH + 400;
+    enemies = enemies.filter(e => !e.dead && (e.useScreenY || e.y < cullY));
   }
+
 
   function draw(ctx, cameraY) {
     for (const e of enemies) {
