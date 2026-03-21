@@ -57,7 +57,9 @@ const Projectiles = (() => {
           const killed = Enemies.hitEnemy(e, b.damage);
           if (killed) {
             GameState.score += e.scoreVal;
-            GameState.coins += Math.ceil(e.scoreVal / 10 * (1 + PlayerUpgrades.getCurrencyBoost()));
+            const coinReward = Math.ceil(e.scoreVal / 10 * PlayerUpgrades.getCurrencyBoost());
+            GameState.coins += coinReward;
+            GameState.totalCoins += coinReward;
           }
           if (!b.piercing) { b.dead = true; break; }
           else { b.hitsLeft--; if (b.hitsLeft <= 0) { b.dead = true; break; } }

@@ -227,7 +227,7 @@ const Coins = (() => {
       // Collect
       if (Physics.playerCoinCollision(player, c)) {
         c.collected = true;
-        const amount = Math.ceil(1 * (1 + PlayerUpgrades.getCurrencyBoost()));
+        const amount = Math.ceil(1 * PlayerUpgrades.getCurrencyBoost());
         GameState.coins += amount;
         GameState.totalCoins += amount;
         if (typeof RunStats !== 'undefined') RunStats.coinsCollected += amount;

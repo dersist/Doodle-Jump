@@ -14,7 +14,7 @@ const Player = (() => {
       vx: 0, vy: 0,  // start stationary - will fall onto guaranteed platform below
 
       // Base stats
-      jumpVelocity: Physics.BASE_JUMP * (1 + jumpBonus),
+      jumpVelocity: Physics.BASE_JUMP * jumpBonus,
       jumpVelocityMult: 1,
       gravity: Physics.BASE_GRAVITY,
       gravityMult: 1,
@@ -147,6 +147,17 @@ const Player = (() => {
     Physics.applyVelocity(player);
     Physics.wrapX(player, canvasW);
 
+    // ── ENEMY CONTACT DAMAGE ──
+    if (!player.invincible && !player.shielded) {
+      for (const e of Enemies.getAll()) {
+        if (e.dead) continue;
+        if (Physics.playerEnemyCollision(player, e)) {
+          takeDamage(e.scale ? e.scale.damage : 1);
+          break;
+        }
+      }
+    }
+
     // ── COLLISION WITH PLATFORMS ──
     player.onGround = false;
     let landed = false;
@@ -216,7 +227,7 @@ const Player = (() => {
         // Coin on coin platform
         if (p.type === 'coin_plat' && !p.coinCollected) {
           p.coinCollected = true;
-          const amount = Math.ceil(3 * (1 + PlayerUpgrades.getCurrencyBoost()));
+          const amount = Math.ceil(3 * PlayerUpgrades.getCurrencyBoost());
           GameState.coins += amount;
           GameState.totalCoins += amount;
           Particles.coins(p.x + p.w/2, p.y - GameState.cameraY, amount);

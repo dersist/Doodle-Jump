@@ -84,20 +84,20 @@ const PlayerUpgrades = (() => {
 
   function getScoreBonus() {
     const lvl = getLevel('score_mult');
-    if (lvl === 0) return 0;
-    return DEFS[1].levels[lvl - 1].bonus;
+    if (lvl === 0) return 1;
+    return 1 + DEFS[1].levels[lvl - 1].bonus;
   }
 
   function getJumpBonus() {
     const lvl = getLevel('jump_mult');
-    if (lvl === 0) return 0;
-    return DEFS[2].levels[lvl - 1].bonus;
+    if (lvl === 0) return 1;
+    return 1 + DEFS[2].levels[lvl - 1].bonus;
   }
 
   function getCurrencyBoost() {
     const lvl = getLevel('currency_boost');
-    if (lvl === 0) return 0;
-    return DEFS[3].levels[lvl - 1].bonus;
+    if (lvl === 0) return 1;
+    return 1 + DEFS[3].levels[lvl - 1].bonus;
   }
 
   function getCooldownReduction() {

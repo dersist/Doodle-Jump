@@ -15,6 +15,10 @@ const Input = (() => {
     window.addEventListener('keydown', (e) => {
       if (!keys[e.code]) justPressed[e.code] = true;
       keys[e.code] = true;
+      // Prevent page scroll during gameplay
+      if (['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) {
+        e.preventDefault();
+      }
     });
     window.addEventListener('keyup', (e) => {
       keys[e.code] = false;
@@ -67,10 +71,10 @@ const Input = (() => {
     for (const k in justReleased) delete justReleased[k];
   }
 
-  function isMovingLeft() { return isDown('ArrowLeft') || isDown('KeyA'); }
+  function isMovingLeft()  { return isDown('ArrowLeft') || isDown('KeyA'); }
   function isMovingRight() { return isDown('ArrowRight') || isDown('KeyD'); }
-  function isShooting() { return isDown('ArrowUp') || isDown('KeyW'); }
-  function isSlamming() { return isDown('ArrowDown') || isDown('KeyS'); }
+  function isShooting()    { return isDown('Space') || isDown('ArrowUp') || isDown('KeyW'); }
+  function isSlamming()    { return isDown('ArrowDown') || isDown('KeyS') || isDown('ShiftLeft'); }
 
   function getAbilitySlot() {
     if (wasJustPressed('Digit1') || wasJustPressed('Numpad1')) return 1;
