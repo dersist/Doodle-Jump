@@ -78,6 +78,9 @@ const GameState = {
   // Drone companions
   drones: [],
 
+  // Last platform landed on — never culled so player can always land back on it
+  lastLandedPlatformId: null,
+
   // Screen shake
   screenShake: 0,
 
@@ -98,8 +101,8 @@ const GameState = {
   // Gun upgrade state { id: { parts: [], unlocked: bool } }
   gunUpgrades: {},
 
-  // Settings
-  settings: { sfx: true, shake: true, scanlines: true },
+  // Platform tracking
+  lastLandedPlatformId: null,
 
   // Difficulty
   difficultyMult: 1,
@@ -300,6 +303,7 @@ function initRun() {
   GameState.rocketTimer    = 0;
   GameState.slamming       = false;
   GameState.drones         = [];
+  GameState.lastLandedPlatformId = null;
   GameState.screenShake    = 0;
   GameState.bossActive     = false;
   GameState.activeBoss     = null;

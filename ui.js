@@ -318,7 +318,7 @@ const Save = (() => {
     GameState.ownedAbilities = {};
     GameState.inventorySlots = { 1: null, 2: null, 3: null };
     GameState.playerUpgradeLevels = {};
-    GameState.settings = { sfx: true, shake: true, scanlines: true };
+    GameState.settings = { sfx: true, shake: true, scanlines: true, autoShoot: true };
   }
 
   return { save, load, reset };
@@ -667,15 +667,18 @@ const UI = (() => {
     const backBtn = document.getElementById('settings-back');
     if (backBtn) backBtn.addEventListener('click', () => showScreen('main-menu'));
 
-    const toggleSfx = document.getElementById('toggle-sfx');
-    const toggleShake = document.getElementById('toggle-shake');
+    const toggleSfx       = document.getElementById('toggle-sfx');
+    const toggleShake     = document.getElementById('toggle-shake');
     const toggleScanlines = document.getElementById('toggle-scanlines');
-    const resetBtn = document.getElementById('btn-reset');
+    const toggleAutoShoot = document.getElementById('toggle-autoshoot');
+    const resetBtn        = document.getElementById('btn-reset');
 
     function updateToggle(btn, key) {
+      if (!btn) return;
       const on = GameState.settings[key];
       btn.textContent = on ? 'ON' : 'OFF';
       btn.dataset.on = on ? 'true' : 'false';
+      btn.style.color = on ? 'var(--neon-cyan)' : 'var(--text-dim)';
     }
 
     if (toggleSfx) {
@@ -702,8 +705,15 @@ const UI = (() => {
       toggleScanlines.addEventListener('click', () => {
         GameState.settings.scanlines = !GameState.settings.scanlines;
         updateToggle(toggleScanlines, 'scanlines');
-        const sl = document.querySelector('.scanlines');
-        if (sl) sl.style.display = GameState.settings.scanlines ? 'block' : 'none';
+        Save.save();
+      });
+    }
+
+    if (toggleAutoShoot) {
+      updateToggle(toggleAutoShoot, 'autoShoot');
+      toggleAutoShoot.addEventListener('click', () => {
+        GameState.settings.autoShoot = !GameState.settings.autoShoot;
+        updateToggle(toggleAutoShoot, 'autoShoot');
         Save.save();
       });
     }

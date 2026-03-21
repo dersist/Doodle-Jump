@@ -136,6 +136,16 @@ const Platforms = (() => {
         if (p.x <= 0 || p.x + p.w >= canvasW) p.moveDir *= -1;
       }
 
+      // Breaking: count down crack delay, then actually break
+      if (p.type === TYPE.BREAKING && p.crackDelay > 0 && !p.broken) {
+        p.crackDelay -= dt;
+        if (p.crackDelay <= 0) {
+          p.broken = true;
+          p.breakTimer = 0;
+          p.cracking = false;
+        }
+      }
+
       // Breaking animation
       if (p.type === TYPE.BREAKING && p.broken) {
         p.breakTimer += dt;
@@ -151,9 +161,23 @@ const Platforms = (() => {
       }
     }
 
-    // Remove platforms well below camera
+    // Release last-landed platform once player has climbed far above it
+    const lastPlat = GameState.lastLandedPlatformId;
+    if (lastPlat && GameState.player) {
+      const distAbove = lastPlat.y - GameState.player.y; // positive = platform is below player
+      if (distAbove > GameState.canvasH * 1.5) {
+        // Player is 1.5 screens above it — they can never reach it again
+        GameState.lastLandedPlatformId = null;
+      }
+    }
+
+    // Remove platforms well below camera — but NEVER remove the last-landed platform
+    const lastId = GameState.lastLandedPlatformId;
     const cullY = cameraY + canvasH + 200;
-    platforms = platforms.filter(p => p.y < cullY && !(p.type === TYPE.BREAKING && p.breakTimer > 25));
+    platforms = platforms.filter(p =>
+      p === lastId ||                            // always keep last landed
+      (p.y < cullY && !(p.type === TYPE.BREAKING && p.breakTimer > 25))
+    );
   }
 
   function draw(ctx, cameraY, shake) {

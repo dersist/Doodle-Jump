@@ -98,16 +98,27 @@ const Player = (() => {
       else if (Input.isMovingRight()) player.vx = speed * 0.6;
     }
 
-    // ── AUTO-SHOOT — always fires, no key required ──
+    // ── AUTO-SHOOT — fires when enemies are on screen (if setting enabled) ──
     const canShoot = !GameState.gravityFlipped || AbilityUpgrades.flipCanShoot();
-    if (canShoot) {
-      player.shootTimer += dt;
-      const fr = player.fireRate
-        * GunUpgrades.getFireRateMult()
-        * (GameState.overdriveTimer > 0 && AbilityUpgrades.overdriveAutoShoot() ? 0.5 : 1);
-      if (player.shootTimer >= fr) {
-        player.shootTimer = 0;
-        firePlayerBullet(player);
+    if (canShoot && GameState.settings.autoShoot) {
+      // Only shoot if there's at least one live enemy visible on screen
+      let hasTarget = false;
+      for (const e of Enemies.getAll()) {
+        if (e.dead) continue;
+        const screenY = e.y - GameState.cameraY;
+        if (screenY > -100 && screenY < canvasH + 100) { hasTarget = true; break; }
+      }
+      if (hasTarget) {
+        player.shootTimer += dt;
+        const fr = player.fireRate
+          * GunUpgrades.getFireRateMult()
+          * (GameState.overdriveTimer > 0 && AbilityUpgrades.overdriveAutoShoot() ? 0.5 : 1);
+        if (player.shootTimer >= fr) {
+          player.shootTimer = 0;
+          firePlayerBullet(player);
+        }
+      } else {
+        player.shootTimer = player.fireRate - 2; // stay ready
       }
     }
 
@@ -175,15 +186,20 @@ const Player = (() => {
           break;
         }
 
-        // Breaking platform — player lands once, THEN it breaks after the bounce
+        // Breaking platform — solid on first land, breaks AFTER player bounces away
         if (p.type === 'breaking') {
           if (player.slamming || AbilityUpgrades.slamBreaksAll()) {
+            // Slam always insta-breaks
             p.broken = true;
             p.breakTimer = 0;
-            continue; // skip landing, keep falling
+            continue;
           }
-          // Let player land and bounce, mark to break AFTER
-          p.cracking = true;
+          if (!p.cracking) {
+            // First touch: mark as cracking but DON'T break yet - let player land
+            p.cracking = true;
+          }
+          // If already cracking from a previous landing by THIS player, skip (already broken)
+          // This is handled below: after bounce, we set a crackDelay then break
         }
 
         // Land on platform
@@ -193,7 +209,24 @@ const Player = (() => {
 
         const wasSlamming = player.slamming;
 
-        // Jump velocity
+        // During gravity flip, player lands but does NOT auto-bounce — they stand on platforms
+        if (GameState.gravityFlipped) {
+          player.vy = 0;
+          player.slamming = false;
+          player.slamLanded = false;
+          player.rocketActive = false;
+          // gf_9: slam synergy = mega jump while flipped
+          if (wasSlamming && AbilityUpgrades.flipSlamSynergy()) {
+            player.vy = Physics.BASE_JUMP * 1.8;
+          }
+          SFX.play('jump');
+          break;
+        }
+
+        // Normal gravity: auto-bounce on land
+        // Track this platform — it won't be culled until player jumps 2 screens above it
+        GameState.lastLandedPlatformId = p;
+
         let jv = player.jumpVelocity * player.jumpVelocityMult;
 
         if (p.type === 'spring') {
@@ -232,11 +265,9 @@ const Player = (() => {
           Particles.coins(p.x + p.w/2, p.y - GameState.cameraY, amount);
         }
 
-        // Breaking: now that player has bounced, mark it broken
-        if (p.cracking) {
-          p.broken = true;
-          p.breakTimer = 0;
-          p.cracking = false;
+        // Breaking: start a short delay AFTER bounce — platform shatters once player leaves
+        if (p.cracking && !p.crackDelay) {
+          p.crackDelay = 20; // break 20 frames after first landing (~0.33s)
         }
 
         break;
@@ -299,16 +330,24 @@ const Player = (() => {
     // ── SHIELD TIMER ──
     if (player.shielded) {
       player.shieldTimer -= dt;
+      // es_4: regen health slowly while shielded
+      if (AbilityUpgrades.shieldRegens()) {
+        player.regenTimer += dt;
+        if (player.regenTimer >= 180) {
+          player.regenTimer = 0;
+          player.health = Math.min(player.maxHealth, player.health + 1);
+          UI.updateHealthBar(player.health, player.maxHealth);
+        }
+      }
       if (player.shieldTimer <= 0 || player.shieldHits <= 0) {
         player.shielded = false;
-        if (AbilityUpgrades.shieldExplodes()) {
+        // es_5 break explosion handled in takeDamage; also trigger on timeout
+        if (player.shieldTimer <= 0 && AbilityUpgrades.shieldExplodes()) {
           for (const e of Enemies.getAll()) {
-            const dist = Math.hypot(e.x - player.x, e.y - player.y);
-            if (dist < 80) Enemies.hitEnemy(e, 2);
+            if (e.dead) continue;
+            if (Math.hypot(e.x - player.x, e.y - player.y) < 90) Enemies.hitEnemy(e, 2);
           }
-          Particles.burst(player.x + player.w/2,
-                          player.y + player.h/2 - GameState.cameraY,
-                          '#00f5ff', 20);
+          Particles.shockwave(player.x + player.w/2, player.y + player.h/2 - GameState.cameraY, '#00f5ff', 90);
         }
       }
     }
@@ -433,16 +472,37 @@ const Player = (() => {
 
   function takeDamage(amount) {
     const player = GameState.player;
-    if (player.invincible || player.shielded) {
-      if (player.shielded) {
-        player.shieldHits -= amount;
-        if (AbilityUpgrades.shieldConvertsToHp()) {
-          player.health = Math.min(player.maxHealth, player.health + 0.5);
+    if (player.shielded) {
+      // Shield absorbs the hit
+      player.shieldHits -= amount;
+      SFX.play('shield_hit');
+      Particles.burst(player.x + player.w/2, player.y + player.h/2 - GameState.cameraY, '#00f5ff', 6);
+      GameState.screenShake = 3;
+
+      // es_9: convert blocked hits to HP
+      if (AbilityUpgrades.shieldConvertsToHp()) {
+        player.health = Math.min(player.maxHealth, player.health + 0.5);
+      }
+
+      // Brief grace after absorbing (20 frames only — NOT 60)
+      player.invincible = true;
+      player.invincibleTimer = 20;
+
+      if (player.shieldHits <= 0) {
+        player.shielded = false;
+        // es_5: explode on break
+        if (AbilityUpgrades.shieldExplodes()) {
+          for (const e of Enemies.getAll()) {
+            if (e.dead) continue;
+            if (Math.hypot(e.x - player.x, e.y - player.y) < 90) Enemies.hitEnemy(e, 2);
+          }
+          Particles.shockwave(player.x + player.w/2, player.y + player.h/2 - GameState.cameraY, '#00f5ff', 90);
         }
-        SFX.play('shield_hit');
       }
       return;
     }
+
+    if (player.invincible) return; // normal invincibility frames
 
     const reducedDmg = amount * AbilityUpgrades.shieldReducesDmg();
 
