@@ -26,6 +26,12 @@ const Projectiles = (() => {
       x, y, vx, vy,
       damage: damage || 1,
       r: 2,
+      color: '#ff6600',
+      glow: '#ff6600',
+      life: 180,
+      dead: false,
+    });
+  }
 
   function init() {
     playerBullets = [];
