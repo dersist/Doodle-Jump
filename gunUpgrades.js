@@ -228,7 +228,7 @@ const GunUpgrades = (() => {
   function getDamageMult() { return has('heavy_caliber') ? 2.5 : 1; }
 
   // Bullet size
-  function getBulletRadius() { return has('heavy_caliber') ? 9 : 5; }
+  function getBulletRadius() { return has('heavy_caliber') ? 4 : 2; }
 
   // Bullet speed multiplier
   function getBulletSpeedMult() { return has('heavy_caliber') ? 0.55 : 1; }

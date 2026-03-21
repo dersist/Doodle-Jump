@@ -176,8 +176,34 @@ const Player = (() => {
       if (p.type === 'phase' && !p.phaseVisible) continue;
       if (p.broken) continue;
 
+      if (GameState.gravityFlipped) {
+        // FLIPPED: player rises upward, collides with UNDERSIDE of platforms
+        if (player.x + player.w <= p.x + 4 || player.x >= p.x + p.w - 4) continue;
+        if (player.vy >= 0) continue; // falling downward in flipped world — pass through
+        const prevTop = player.y - player.vy;
+        const currTop = player.y;
+        const platBottom = p.y + p.h;
+        if (prevTop >= platBottom - 2 && currTop <= platBottom + 2) {
+          player.y = platBottom;
+          player.vy = 0;
+          player.onGround = true;
+          landed = true;
+          if (p.type === 'spiky') { takeDamage(1); }
+          if (p.type === 'breaking' && !p.cracking) { p.cracking = true; }
+          if (p.cracking && !p.crackDelay) { p.crackDelay = 20; }
+          GameState.lastLandedPlatformId = p;
+          // gf_9: slam synergy = kick downward strongly
+          if (player.slamming && AbilityUpgrades.flipSlamSynergy()) {
+            player.vy = 20;
+          }
+          player.slamming = false;
+          SFX.play('jump');
+          break;
+        }
+        continue;
+      }
+
       if (Physics.playerPlatformCollision(player, p)) {
-        // Spiky platform damages player but still bounces them
         if (p.type === 'spiky') {
           player.y = p.y - player.h;
           player.vy = player.jumpVelocity * player.jumpVelocityMult;
@@ -186,63 +212,27 @@ const Player = (() => {
           break;
         }
 
-        // Breaking platform — solid on first land, breaks AFTER player bounces away
         if (p.type === 'breaking') {
           if (player.slamming || AbilityUpgrades.slamBreaksAll()) {
-            // Slam always insta-breaks
-            p.broken = true;
-            p.breakTimer = 0;
-            continue;
+            p.broken = true; p.breakTimer = 0; continue;
           }
-          if (!p.cracking) {
-            // First touch: mark as cracking but DON'T break yet - let player land
-            p.cracking = true;
-          }
-          // If already cracking from a previous landing by THIS player, skip (already broken)
-          // This is handled below: after bounce, we set a crackDelay then break
+          if (!p.cracking) { p.cracking = true; }
         }
 
-        // Land on platform
         player.y = p.y - player.h;
         player.onGround = true;
         landed = true;
-
-        const wasSlamming = player.slamming;
-
-        // During gravity flip, player lands but does NOT auto-bounce — they stand on platforms
-        if (GameState.gravityFlipped) {
-          player.vy = 0;
-          player.slamming = false;
-          player.slamLanded = false;
-          player.rocketActive = false;
-          // gf_9: slam synergy = mega jump while flipped
-          if (wasSlamming && AbilityUpgrades.flipSlamSynergy()) {
-            player.vy = Physics.BASE_JUMP * 1.8;
-          }
-          SFX.play('jump');
-          break;
-        }
-
-        // Normal gravity: auto-bounce on land
-        // Track this platform — it won't be culled until player jumps 2 screens above it
         GameState.lastLandedPlatformId = p;
 
+        const wasSlamming = player.slamming;
         let jv = player.jumpVelocity * player.jumpVelocityMult;
 
         if (p.type === 'spring') {
-          jv *= 1.6;
-          SFX.play('spring');
-          player.squishY = 0.5;
-          player.squishTimer = 8;
+          jv *= 1.6; SFX.play('spring'); player.squishY = 0.5; player.squishTimer = 8;
         } else if (p.type === 'boost') {
-          jv *= 2.2;
-          SFX.play('boost');
-          player.squishY = 0.4;
-          player.squishTimer = 10;
+          jv *= 2.2; SFX.play('boost'); player.squishY = 0.4; player.squishTimer = 10;
         } else {
-          player.squishY = 0.7;
-          player.squishTimer = 5;
-          SFX.play('jump');
+          player.squishY = 0.7; player.squishTimer = 5; SFX.play('jump');
         }
 
         player.vy = jv;
@@ -251,12 +241,8 @@ const Player = (() => {
         player.rocketActive = false;
         if (typeof RunStats !== 'undefined') RunStats.platformsBounced++;
 
-        // Slam landing effects (check before clearing flag)
-        if (wasSlamming) {
-          handleSlamLanding(player, p);
-        }
+        if (wasSlamming) { handleSlamLanding(player, p); }
 
-        // Coin on coin platform
         if (p.type === 'coin_plat' && !p.coinCollected) {
           p.coinCollected = true;
           const amount = Math.ceil(3 * PlayerUpgrades.getCurrencyBoost());
@@ -265,16 +251,13 @@ const Player = (() => {
           Particles.coins(p.x + p.w/2, p.y - GameState.cameraY, amount);
         }
 
-        // Breaking: start a short delay AFTER bounce — platform shatters once player leaves
-        if (p.cracking && !p.crackDelay) {
-          p.crackDelay = 20; // break 20 frames after first landing (~0.33s)
-        }
+        if (p.cracking && !p.crackDelay) { p.crackDelay = 20; }
 
         break;
       }
     }
 
-    // ── AIM ASSIST — nudge player onto platform if close to edge ──
+    // ── AIM ASSISTplatform if close to edge ──
     if (!landed && player.vy > 0) {
       let closestDist = 28; // pixels threshold for aim assist
       let closestPlat = null;
@@ -308,20 +291,15 @@ const Player = (() => {
       // Keep slamming
     }
 
-    // ── GRAVITY FLIP — bounce off top of visible screen ──
+    // ── GRAVITY FLIP — game over if player falls off bottom while flipped ──
     if (GameState.gravityFlipped) {
-      const screenTop = GameState.cameraY + 20; // world Y of screen top + margin
-      if (player.y <= screenTop) {
-        player.y = screenTop;
-        player.vy = Math.abs(player.jumpVelocity * player.jumpVelocityMult);
-        player.onGround = true;
-        SFX.play('jump');
-        player.squishY = 0.7;
-        player.squishTimer = 5;
+      if (player.y > GameState.cameraY + canvasH + 100) {
+        if (typeof handleGameOver === 'function') handleGameOver();
+        else GameState.gameOver = true;
       }
     }
 
-    // ── GAME OVER CHECK — fell below screen ──
+    // ── GAME OVER CHECK — fell below screen (normal gravity) ──
     if (!GameState.gravityFlipped && player.y > GameState.cameraY + canvasH + 100) {
       if (typeof handleGameOver === 'function') handleGameOver();
       else GameState.gameOver = true;
@@ -438,7 +416,7 @@ const Player = (() => {
     // Mega bullet overrides everything
     if (mega) {
       Projectiles.addPlayerBullet(player.x + player.w/2, player.y - 5, 0, -baseSpd * 0.6,
-        baseDmg * 4, { r: 14, color: '#ff00ff', glow: '#ff00ff', piercing: true, hitsLeft: 5,
+        baseDmg * 4, { r: 7, color: '#ff00ff', glow: '#ff00ff', piercing: true, hitsLeft: 5,
           explosive: true, life: 180 });
       SFX.play('boost');
       return;

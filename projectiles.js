@@ -10,7 +10,7 @@ const Projectiles = (() => {
     playerBullets.push({
       x, y, vx, vy,
       damage: damage || 1,
-      r: options.r || 5,
+      r: options.r || 2,
       color: options.color || '#00f5ff',
       glow: options.glow || '#00f5ff',
       piercing: options.piercing || false,
@@ -25,13 +25,7 @@ const Projectiles = (() => {
     enemyBullets.push({
       x, y, vx, vy,
       damage: damage || 1,
-      r: 5,
-      color: '#ff6600',
-      glow: '#ff6600',
-      life: 180,
-      dead: false,
-    });
-  }
+      r: 2,
 
   function init() {
     playerBullets = [];

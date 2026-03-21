@@ -63,7 +63,7 @@ const Enemies = (() => {
       y: cameraY - 80,          // world Y (above screen top)
       screenY: 80,               // screen-relative Y — locked for persistence
       useScreenY: true,          // render using screenY while persisting
-      persistHeight: 600 + Math.random() * 400, // stay on screen for this many world-px
+      persistHeight: 6000 + Math.random() * 4000, // stay on screen for this many world-px
       spawnCameraY: cameraY,     // camera Y when spawned
       w, h,
       vx: (Math.random() * 2 - 1) * 1.5 * scale.speed,

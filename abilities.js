@@ -409,8 +409,8 @@ const Abilities = (() => {
     };
 
     switch (effect) {
-      case 'mega_jump':     player.vy = -28; break;
-      case 'super_jump':    player.vy = -38; break;
+      case 'mega_jump':     player.vy = -22; break;                        // was -28
+      case 'super_jump':    player.vy = -30; break;                        // was -38
       case 'coins_shower':  Coins.showerCoins(GameState.canvasW, GameState.cameraY); break;
       case 'mega_coins':
         Coins.showerCoins(GameState.canvasW, GameState.cameraY);
@@ -421,7 +421,7 @@ const Abilities = (() => {
         break;
       case 'kill_and_heal':
         for (const e of Enemies.getAll()) Enemies.killEnemy(e);
-        if (player.health < player.maxHealth) player.health = Math.min(player.maxHealth, player.health + 2);
+        if (player.health < player.maxHealth) player.health = Math.min(player.maxHealth, player.health + 1);
         break;
       case 'full_heal':
         if (player.health < player.maxHealth) player.health = player.maxHealth;
@@ -429,71 +429,72 @@ const Abilities = (() => {
       case 'boost_speed':   GameState.speedBoostTimer = dur; break;
       case 'slow_enemies':
         GameState.timeSlowTimer = dur;
-        GameState.timeSlowFactor = 0.4;
+        GameState.timeSlowFactor = 0.5;
         break;
       case 'free_platforms':
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < 4; i++) {
           Platforms.addPlatform('normal', Math.random() * GameState.canvasW, player.y - 60 - i * 80);
         }
         break;
-      case 'score_bonus':   GameState.score += 200; break;
+      case 'score_bonus':   GameState.score += 150; break;
       case 'shield':
         player.shielded = true;
         player.shieldTimer = 90;
         player.shieldHits = 1;
         break;
-      case 'overdrive_burst':
-        player.gravityMult = 0.5;
-        player.jumpVelocityMult = 1.4;
-        player.moveSpeedMult = 1.4;
-        GameState.overdriveTimer = 150;
-        GameState.overdriveMult = 1.2;
+      case 'overdrive_burst':                                              // nerfed
+        player.gravityMult      = 0.82;
+        player.jumpVelocityMult = 1.15;
+        player.moveSpeedMult    = 1.15;
+        GameState.overdriveTimer = 120;
+        GameState.overdriveMult  = 1.0;
         break;
       case 'invincible':
         player.invincible = true;
-        player.invincibleTimer = dur;
+        player.invincibleTimer = Math.min(dur, 150);                       // cap at 2.5s
         break;
-      case 'gravity_surge': player.vy = 22; break;
+      case 'gravity_surge': player.vy = 18; break;
       case 'speed_cut':     GameState.speedCutTimer = 90; break;
-      case 'lose_coins':
+      case 'lose_coins': {
         const loss = Math.floor(GameState.coins * 0.1);
         GameState.coins = Math.max(0, GameState.coins - loss);
         GameState.totalCoins = Math.max(0, GameState.totalCoins - loss);
         break;
+      }
     }
     UI.showToast('CHAOS: ' + (labels[effect] || effect), 2000);
     SFX.play('chaos');
   }
 
-  // ── OVERDRIVE ─────────────────────────────────────────────
+  // ── OVERDRIVE — nerfed to ~30% of previous power ─────────
   function doOverdrive() {
     const dur = AbilityUpgrades.getOverdriveDuration(BASE_DURATIONS.overdrive);
-    const mult = AbilityUpgrades.getOverdriveMult();
+    const mult = AbilityUpgrades.getOverdriveMult(); // 1.0 base, 1.5 with od_2
     GameState.overdriveTimer = dur;
     GameState.overdriveMult = mult;
     const player = GameState.player;
 
-    // od_2: power multiplier — jump and speed
-    player.jumpVelocityMult = 1 + 0.5 * mult;
-    player.moveSpeedMult = 1 + 0.4 * mult;
+    // od_2 upgrade: 15% jump boost (was 50%), 12% speed boost (was 40%)
+    player.jumpVelocityMult = 1 + 0.15 * mult;
+    player.moveSpeedMult    = 1 + 0.12 * mult;
 
-    // od_6: reduce gravity
-    if (AbilityUpgrades.overdriveReducesGravity()) player.gravityMult = 0.55;
+    // od_6: slight gravity reduction
+    if (AbilityUpgrades.overdriveReducesGravity()) player.gravityMult = 0.82;
 
-    // od_7: extra speed boost
-    if (AbilityUpgrades.overdriveBoostsSpeed()) player.moveSpeedMult *= 1.6;
+    // od_7: small extra speed
+    if (AbilityUpgrades.overdriveBoostsSpeed()) player.moveSpeedMult *= 1.15;
 
-    // od_9: max power — everything maxed
+    // od_9: max power — still capped and balanced
     if (AbilityUpgrades.overdriveMaxPower()) {
-      player.jumpVelocityMult = 2.0;
-      player.moveSpeedMult = 2.0;
-      player.gravityMult = 0.4;
+      player.jumpVelocityMult = 1.35;
+      player.moveSpeedMult    = 1.30;
+      player.gravityMult      = 0.78;
     }
 
-    state['overdrive'].active = true;
+    state['overdrive'].active   = true;
     state['overdrive'].duration = dur;
-    GameState.screenShake = 12;
-    Particles.burst(player.x + player.w/2, player.y + player.h/2 - GameState.cameraY, '#ffee00', 30);
+    GameState.screenShake = 6;
+    Particles.burst(player.x + player.w/2, player.y + player.h/2 - GameState.cameraY, '#ffee00', 18);
     SFX.play('overdrive');
     UI.showToast('⚡ OVERDRIVE!', 1200);
   }
@@ -593,7 +594,7 @@ const Abilities = (() => {
                 drone.x, drone.y + GameState.cameraY,
                 (dx/dist) * spd, (dy/dist) * spd, dmg,
                 {
-                  r: drone.elite ? 8 : 5,
+                  r: drone.elite ? 4 : 2,
                   color: drone.elite ? '#ffee00' : '#9900ff',
                   glow:  drone.elite ? '#ffee00' : '#9900ff',
                   explosive: AbilityUpgrades.droneIsExplosive(),
