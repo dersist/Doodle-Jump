@@ -42,6 +42,27 @@ const Projectiles = (() => {
     // Player bullets
     for (const b of playerBullets) {
       if (b.dead) continue;
+
+      // Homing: nudge velocity toward nearest enemy
+      let nearestE = null, nearestD = Infinity;
+      for (const e of enemies) {
+        if (e.dead) continue;
+        const d = Math.hypot(e.x + e.w/2 - b.x, e.y + e.h/2 - b.y);
+        if (d < nearestD) { nearestD = d; nearestE = e; }
+      }
+      if (nearestE && nearestD < 300) {
+        const tx = nearestE.x + nearestE.w/2 - b.x;
+        const ty = nearestE.y + nearestE.h/2 - b.y;
+        const dist = Math.hypot(tx, ty);
+        const homingStr = 0.18;
+        b.vx += (tx / dist) * homingStr;
+        b.vy += (ty / dist) * homingStr;
+        // Cap speed
+        const spd = Math.hypot(b.vx, b.vy);
+        const maxSpd = 12;
+        if (spd > maxSpd) { b.vx = b.vx/spd*maxSpd; b.vy = b.vy/spd*maxSpd; }
+      }
+
       b.x += b.vx;
       b.y += b.vy;
       b.life--;

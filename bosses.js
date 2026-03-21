@@ -40,8 +40,9 @@ const Bosses = (() => {
     const canvasW = GameState.canvasW;
     const cameraY = GameState.cameraY;
 
-    // Announce boss
-    UI.showBossAnnounce(['SKY SERPENT', 'TITAN PLATFORM', 'VOID CORE'][idx]);
+    // Announce boss via toast (non-intrusive)
+    const bossNames = ['SKY SERPENT', 'TITAN PLATFORM', 'VOID CORE'];
+    UI.showToast('⚠ BOSS: ' + bossNames[idx] + ' ⚠', 2500);
     SFX.play('boss_spawn');
     GameState.screenShake = 15;
 

@@ -176,15 +176,15 @@ const Player = (() => {
           break;
         }
 
-        // Breaking platform
+        // Breaking platform — player lands once, THEN it breaks after the bounce
         if (p.type === 'breaking') {
           if (player.slamming || AbilityUpgrades.slamBreaksAll()) {
             p.broken = true;
             p.breakTimer = 0;
-            continue;
+            continue; // skip landing, keep falling
           }
-          p.broken = true;
-          p.breakTimer = 0;
+          // Let player land and bounce, mark to break AFTER
+          p.cracking = true;
         }
 
         // Land on platform
@@ -233,7 +233,43 @@ const Player = (() => {
           Particles.coins(p.x + p.w/2, p.y - GameState.cameraY, amount);
         }
 
+        // Breaking: now that player has bounced, mark it broken
+        if (p.cracking) {
+          p.broken = true;
+          p.breakTimer = 0;
+          p.cracking = false;
+        }
+
         break;
+      }
+    }
+
+    // ── AIM ASSIST — nudge player onto platform if close to edge ──
+    if (!landed && player.vy > 0) {
+      let closestDist = 28; // pixels threshold for aim assist
+      let closestPlat = null;
+      for (const p of Platforms.getAll()) {
+        if (p.type === 'phase' && !p.phaseVisible) continue;
+        if (p.broken || p.cracking) continue;
+        if (p.type === 'spiky') continue; // never assist onto dangerous pads
+        const feet = player.y + player.h;
+        if (feet < p.y - 2 || feet > p.y + 10) continue;
+        // Check horizontal proximity to edge
+        const playerCX = player.x + player.w / 2;
+        const leftEdge  = p.x;
+        const rightEdge = p.x + p.w;
+        const leftGap  = Math.abs(playerCX - leftEdge);
+        const rightGap = Math.abs(playerCX - rightEdge);
+        const dist = Math.min(leftGap, rightGap);
+        if (dist < closestDist && dist < player.w) {
+          closestDist = dist;
+          closestPlat = p;
+        }
+      }
+      if (closestPlat) {
+        const playerCX = player.x + player.w / 2;
+        if (playerCX < closestPlat.x) player.x += Math.min(3, closestPlat.x - playerCX + player.w / 2);
+        else if (playerCX > closestPlat.x + closestPlat.w) player.x -= Math.min(3, playerCX - closestPlat.x - closestPlat.w + player.w / 2);
       }
     }
 
@@ -280,7 +316,7 @@ const Player = (() => {
     // ── REGEN ──
     if (PlayerUpgrades.hasRegen() && player.health < player.maxHealth) {
       player.regenTimer += dt;
-      if (player.regenTimer >= 120) {
+      if (player.regenTimer >= 900) {
         player.regenTimer = 0;
         player.health = Math.min(player.maxHealth, player.health + 1);
       }
@@ -348,15 +384,39 @@ const Player = (() => {
   function firePlayerBullet(player) {
     const dmg = player.bulletDamage * (GameState.overdriveTimer > 0 ? 1.5 : 1)
               * (AbilityUpgrades.slowBoostsDmg() && GameState.timeSlowTimer > 0 ? 1.5 : 1);
-    const spd = AbilityUpgrades.slowBoostsBullets() && GameState.timeSlowTimer > 0 ? -14 : -10;
+
+    // Find nearest enemy above the player for homing
+    let vx = 0, vy = -10;
+    const spd = AbilityUpgrades.slowBoostsBullets() && GameState.timeSlowTimer > 0 ? 14 : 10;
+    let nearestEnemy = null, nearestDist = Infinity;
+    for (const e of Enemies.getAll()) {
+      if (e.dead) continue;
+      const ex = e.x + e.w / 2, ey = e.y + e.h / 2;
+      // Prefer enemies above or at player level
+      const dist = Math.hypot(ex - (player.x + player.w/2), ey - (player.y + player.h/2));
+      if (dist < nearestDist && dist < 400) {
+        nearestDist = dist;
+        nearestEnemy = e;
+      }
+    }
+    if (nearestEnemy) {
+      const dx = (nearestEnemy.x + nearestEnemy.w/2) - (player.x + player.w/2);
+      const dy = (nearestEnemy.y + nearestEnemy.h/2) - (player.y + player.h/2);
+      const dist = Math.hypot(dx, dy);
+      vx = (dx / dist) * spd;
+      vy = (dy / dist) * spd;
+    } else {
+      vy = -spd;
+    }
+
     Projectiles.addPlayerBullet(
       player.x + player.w/2, player.y - 5,
-      0, spd,
+      vx, vy,
       dmg,
       {
         r: 5,
         color: GameState.overdriveTimer > 0 ? '#ffee00' : '#00f5ff',
-        glow: GameState.overdriveTimer > 0 ? '#ffee00' : '#00f5ff',
+        glow:  GameState.overdriveTimer > 0 ? '#ffee00' : '#00f5ff',
         piercing: AbilityUpgrades.overdriveAutoShoot() && GameState.overdriveTimer > 0,
       }
     );

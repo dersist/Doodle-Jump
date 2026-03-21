@@ -78,40 +78,49 @@ const Platforms = (() => {
   function getTypeForHeight(score) {
     const r = Math.random();
     if (score < 500) {
-      if (r < 0.75) return TYPE.NORMAL;
+      if (r < 0.78) return TYPE.NORMAL;
       if (r < 0.88) return TYPE.MOVING;
       if (r < 0.93) return TYPE.SPRING;
       if (r < 0.97) return TYPE.COIN;
       return TYPE.BREAKING;
     } else if (score < 1500) {
-      if (r < 0.55) return TYPE.NORMAL;
-      if (r < 0.70) return TYPE.MOVING;
-      if (r < 0.78) return TYPE.SPRING;
-      if (r < 0.84) return TYPE.BREAKING;
-      if (r < 0.88) return TYPE.BOOST;
-      if (r < 0.92) return TYPE.PHASE;
-      if (r < 0.96) return TYPE.COIN;
+      if (r < 0.52) return TYPE.NORMAL;
+      if (r < 0.66) return TYPE.MOVING;
+      if (r < 0.74) return TYPE.SPRING;
+      if (r < 0.81) return TYPE.BREAKING;
+      if (r < 0.86) return TYPE.BOOST;
+      if (r < 0.90) return TYPE.PHASE;
+      if (r < 0.95) return TYPE.COIN;
       return TYPE.SPIKY;
     } else {
-      if (r < 0.40) return TYPE.NORMAL;
-      if (r < 0.55) return TYPE.MOVING;
-      if (r < 0.63) return TYPE.SPRING;
-      if (r < 0.69) return TYPE.BREAKING;
-      if (r < 0.74) return TYPE.BOOST;
-      if (r < 0.79) return TYPE.PHASE;
-      if (r < 0.84) return TYPE.COIN;
+      if (r < 0.38) return TYPE.NORMAL;
+      if (r < 0.52) return TYPE.MOVING;
+      if (r < 0.62) return TYPE.SPRING;
+      if (r < 0.70) return TYPE.BREAKING;
+      if (r < 0.76) return TYPE.BOOST;
+      if (r < 0.81) return TYPE.PHASE;
+      if (r < 0.88) return TYPE.COIN;
       return TYPE.SPIKY;
     }
   }
 
   function spawnAbove(canvasW, cameraY, score) {
-    const gap = Math.max(55, spawnGap - score * 0.01);
-    // Spawn until we're well above the camera top
-    while (topY > cameraY - 200) {
-      topY -= gap + Math.random() * 25;
+    const gap = Math.max(50, spawnGap - score * 0.01);
+    while (topY > cameraY - 300) {
+      topY -= gap + Math.random() * 20;
       const type = getTypeForHeight(score);
       const x = Math.random() * (canvasW - PLATFORM_W - 10) + 5;
       platforms.push(createPlatform(type, x, topY, canvasW));
+
+      // Alongside every dangerous platform, spawn a safe one nearby so
+      // there's always a valid path upward
+      if (type === TYPE.SPIKY || type === TYPE.PHASE) {
+        const safeX = x > canvasW / 2
+          ? Math.random() * (canvasW / 2 - PLATFORM_W)
+          : canvasW / 2 + Math.random() * (canvasW / 2 - PLATFORM_W);
+        platforms.push(createPlatform(TYPE.NORMAL, safeX, topY - gap * 0.6, canvasW));
+        topY -= gap * 0.6;
+      }
     }
   }
 

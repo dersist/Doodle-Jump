@@ -108,10 +108,13 @@ const Abilities = (() => {
     const dir = Input.isMovingLeft() ? -1 : 1;
 
     if (AbilityUpgrades.dashAutoTargets()) {
-      // Find nearest platform
+      // Find nearest SAFE platform above the player
       let nearest = null, nearestDist = Infinity;
       for (const p of Platforms.getAll()) {
-        const d = Math.hypot(p.x - player.x, p.y - player.y);
+        if (p.broken || p.cracking) continue;
+        if (p.type === 'spiky' || p.type === 'phase') continue; // skip dangerous
+        if (p.y >= player.y) continue; // must be above
+        const d = Math.hypot(p.x + p.w/2 - (player.x + player.w/2), p.y - player.y);
         if (d < nearestDist) { nearestDist = d; nearest = p; }
       }
       if (nearest) {
@@ -219,7 +222,7 @@ const Abilities = (() => {
 
   // ── TIME DISTORT ──
   function doTimeDistort() {
-    const dur = AbilityUpgrades.getSlowDuration(BASE_DURATIONS.time_distort);
+    const dur = AbilityUpgrades.getSlowDuration(180); // 180 real frames = 3 seconds
     const factor = AbilityUpgrades.getSlowFactor();
     GameState.timeSlowTimer = dur;
     GameState.timeSlowFactor = factor;
@@ -229,6 +232,7 @@ const Abilities = (() => {
     Particles.ring(GameState.player.x + GameState.player.w/2,
                    GameState.player.y + GameState.player.h/2 - GameState.cameraY,
                    '#00f5ff', 100);
+    UI.showToast('TIME DISTORTED!', 1500);
   }
 
   // ── PLATFORM FORGE ──
@@ -290,6 +294,22 @@ const Abilities = (() => {
   function applyChaosEffect(effect) {
     const dur = AbilityUpgrades.chaosLongDuration() ? 300 : 180;
     const player = GameState.player;
+    const labels = {
+      mega_jump:      '🚀 MEGA JUMP!',
+      coins_shower:   '◈ COIN SHOWER!',
+      kill_all:       '💀 ENEMIES WIPED!',
+      full_heal:      '❤️ FULL HEAL!',
+      boost_speed:    '⚡ SPEED BOOST!',
+      slow_enemies:   '⏱ SLOW FIELD!',
+      free_platforms: '🪄 FREE PLATFORMS!',
+      score_bonus:    '⭐ +100 SCORE!',
+      shield:         '🛡 SHIELD!',
+      overdrive_burst:'🔥 OVERDRIVE!',
+      invincible:     '✨ INVINCIBLE!',
+      gravity_surge:  '⬇ GRAVITY SURGE!',
+      speed_cut:      '🐢 SPEED CUT!',
+      lose_coins:     '💸 COIN DRAIN!',
+    };
 
     switch (effect) {
       case 'mega_jump':     player.vy = -25; break;
@@ -300,18 +320,20 @@ const Abilities = (() => {
       case 'slow_enemies':  GameState.timeSlowTimer = dur; GameState.timeSlowFactor = 0.5; break;
       case 'free_platforms':
         for (let i = 0; i < 4; i++) {
-          Platforms.addPlatform('spring', Math.random() * GameState.canvasW, player.y + i * 40);
+          Platforms.addPlatform('normal', Math.random() * GameState.canvasW,
+            player.y - 60 - i * 70);
         }
         break;
-      case 'score_bonus':   GameState.score += 100; UI.showToast('+100 CHAOS BONUS!'); break;
+      case 'score_bonus':   GameState.score += 100; break;
       case 'shield':        player.shielded = true; player.shieldTimer = 120; player.shieldHits = 2; break;
       case 'overdrive_burst': player.gravityMult = 0.5; GameState.overdriveTimer = 120; break;
       case 'invincible':    player.invincible = true; player.invincibleTimer = dur; break;
-      case 'gravity_surge': GameState.player.vy = 20; break;
+      case 'gravity_surge': player.vy = 20; break;
       case 'speed_cut':     GameState.speedCutTimer = 90; break;
-      case 'lose_coins':    GameState.coins = Math.max(0, GameState.coins - 20); break;
+      case 'lose_coins':    GameState.coins = Math.max(0, GameState.coins - 20);
+                            GameState.totalCoins = Math.max(0, GameState.totalCoins - 20); break;
     }
-    UI.showToast('CHAOS: ' + effect.replace(/_/g, ' ').toUpperCase());
+    UI.showToast('CHAOS: ' + (labels[effect] || effect), 1800);
     SFX.play('chaos');
   }
 

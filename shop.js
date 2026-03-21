@@ -4,7 +4,7 @@
 
 const Shop = (() => {
   function init() {
-    // Tab switching
+    // Tab switching only
     document.querySelectorAll('.shop-tab').forEach(tab => {
       tab.addEventListener('click', () => {
         document.querySelectorAll('.shop-tab').forEach(t => t.classList.remove('active'));
@@ -12,10 +12,6 @@ const Shop = (() => {
         tab.classList.add('active');
         document.getElementById('shop-' + tab.dataset.tab).classList.add('active');
       });
-    });
-
-    document.getElementById('shop-back').addEventListener('click', () => {
-      UI.showScreen('main-menu');
     });
   }
 
@@ -113,10 +109,16 @@ const Shop = (() => {
           tree.appendChild(row);
         });
 
-        // Sell button
+        // Sell button - calculate true refund (50% of ability + all upgrades)
         const sellRow = document.createElement('div');
         sellRow.style.cssText = 'margin-top:10px;display:flex;justify-content:flex-end;gap:8px;';
-        const refund = Math.floor(ability.price * 0.5);
+        let totalSpent = ability.price;
+        const allUps = Items.getUpgradesForAbility(ability.id);
+        for (const upId of owned.upgrades) {
+          const upDef = allUps.find(u => u.id === upId);
+          if (upDef) totalSpent += upDef.price;
+        }
+        const refund = Math.floor(totalSpent * 0.5);
         sellRow.innerHTML = `
           <button class="upgrade-buy-btn cant-afford" style="color:#ff0080;border-color:rgba(255,0,128,0.3);"
             onclick="Shop.sellAbility('${ability.id}')">
@@ -261,7 +263,7 @@ const Shop = (() => {
 
     document.getElementById('shop-coins-val').textContent = GameState.totalCoins;
     renderAbilities();
-    UI.showToast('SOLD! +" + refund + "◈ REFUNDED');
+    UI.showToast(`SOLD! +${refund}◈ REFUNDED`);
     SFX.play('sell');
   }
 
