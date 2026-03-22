@@ -526,7 +526,7 @@ const UI = (() => {
     Save.save();
 
     // ── Reset rows to hidden
-    const rows = ['height','enemies','collected','bounces','bosses'];
+    const rows = ['height','enemies','collected','bounces','bosses','diffmult'];
     rows.forEach(id => {
       const row = document.getElementById('go-row-' + id);
       const val = document.getElementById('go-coins-' + id);
@@ -570,6 +570,7 @@ const UI = (() => {
       { id: 'collected', amount: collected,   label: '+' },
       { id: 'bounces',   amount: bounceCoins, label: '+' },
       { id: 'bosses',    amount: bossCoins,   label: '+', skip: bossCoins === 0 },
+      { id: 'diffmult',  amount: null,        label: '×', skip: diffMult === 1.0, fixedText: '×' + diffMult.toFixed(1) },
     ];
 
     let delay = 200;
@@ -582,6 +583,12 @@ const UI = (() => {
         const valEl = document.getElementById('go-coins-' + row.id);
         if (rowEl) rowEl.classList.add('visible');
         SFX.play('purchase');
+        if (row.fixedText) {
+          if (valEl) valEl.textContent = row.fixedText;
+          runningTotal += 0;
+          if (totalEl) totalEl.textContent = runningTotal;
+          return;
+        }
         animateCount(valEl, row.amount, row.label, 600, () => {
           runningTotal += row.amount;
           if (totalEl) totalEl.textContent = runningTotal;

@@ -238,6 +238,84 @@ const RunStats = {
   }
 };
 
+// ── COMBO SYSTEM ─────────────────────────────────────────────
+// Tracks consecutive landings on different special platforms
+const Combo = {
+  count: 0,           // current combo multiplier (0 = no combo active)
+  lastPlatform: null, // reference to last landed platform object
+  comboCoins: 0,      // coins awarded by highest combo this chain
+  timeout: 0,         // frames until combo expires from inactivity
+
+  // Special platform types (anything but normal)
+  isSpecial(type) {
+    return type !== 'normal';
+  },
+
+  // Call when player lands on a platform
+  onLand(platform) {
+    if (!this.isSpecial(platform.type)) {
+      // Normal pad: end combo and pay out
+      this.end();
+      this.lastPlatform = null;
+      return;
+    }
+
+    if (platform === this.lastPlatform) {
+      // Same exact platform again: break combo
+      this.end();
+      this.lastPlatform = null;
+      return;
+    }
+
+    // New special platform: increment combo
+    this.count++;
+    this.lastPlatform = platform;
+    this.timeout = 300; // 5 seconds to continue combo
+
+    // Award coins equal to combo count
+    this.comboCoins = this.count;
+
+    // Play sound and show toast
+    SFX.play('purchase');
+    if (this.count >= 2) {
+      UI.showToast(`${this.count}x COMBO! +${this.count}◈`, 1200);
+      if (this.count >= 5) SFX.play('boost');
+    }
+  },
+
+  // Call each frame to tick timeout
+  tick(dt) {
+    if (this.count > 0 && this.timeout > 0) {
+      this.timeout -= dt;
+      if (this.timeout <= 0) this.end();
+    }
+  },
+
+  // End combo and award coins
+  end() {
+    if (this.count > 0) {
+      const coins = this.comboCoins;
+      GameState.coins += coins;
+      GameState.totalCoins += coins;
+      if (typeof RunStats !== 'undefined') RunStats.coinsCollected += coins;
+      if (this.count >= 3) {
+        UI.showToast(`COMBO ENDED! +${coins}◈`, 1500);
+      }
+    }
+    this.count = 0;
+    this.comboCoins = 0;
+    this.timeout = 0;
+    this.lastPlatform = null;
+  },
+
+  reset() {
+    this.count = 0;
+    this.comboCoins = 0;
+    this.timeout = 0;
+    this.lastPlatform = null;
+  }
+};
+
 function updateScore() {
   // Divide by 50: ~50 pixels per "meter", so first jump gives ~4-8 height units
   const rawScore = Math.max(0, Math.floor((startCameraY - GameState.cameraY) / 50));
@@ -330,6 +408,7 @@ function initRun() {
   GameState.reviveUsed     = false;
 
   RunStats.reset();
+  Combo.reset();
 
   // Init subsystems
   Platforms.init(GameState.canvasW, GameState.canvasH);
@@ -430,6 +509,9 @@ function update(dt, rawDt) {
     return;
   }
 
+  // Combo tick
+  Combo.tick(dt);
+
   // Ability activations (1/2/3 keys)
   for (let slot = 1; slot <= 3; slot++) {
     if (Input.getAbilitySlot() === slot) {
@@ -480,6 +562,18 @@ function update(dt, rawDt) {
   UI.updateAbilityHUD();
   UI.updateAbilityCooldowns();
   UI.updateSpeedrunTimer();
+
+  // Combo HUD
+  const comboEl = document.getElementById('combo-display');
+  const comboVal = document.getElementById('combo-val');
+  if (comboEl && comboVal) {
+    if (Combo.count >= 2) {
+      comboEl.style.display = 'block';
+      comboVal.textContent = Combo.count + 'x COMBO';
+    } else {
+      comboEl.style.display = 'none';
+    }
+  }
 
   // Speedrun timer toggle
   if (Input.isTimerToggle()) UI.toggleSpeedrunTimer();

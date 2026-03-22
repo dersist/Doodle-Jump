@@ -241,6 +241,7 @@ const Player = (() => {
         player.slamLanded = false;
         player.rocketActive = false;
         if (typeof RunStats !== 'undefined') RunStats.platformsBounced++;
+        if (typeof Combo !== 'undefined') Combo.onLand(p);
 
         if (wasSlamming) { handleSlamLanding(player, p); }
 
