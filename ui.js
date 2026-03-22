@@ -821,26 +821,50 @@ const LootBox = (() => {
   function getMsRemain()  { return Math.max(0, COOLDOWN_MS - (Date.now() - getLastOpen())); }
 
   function roll() {
+    // Filter out already-owned abilities
+    const unownedAbilities = ABILITY_IDS.filter(id =>
+      !GameState.ownedAbilities || !GameState.ownedAbilities[id]
+    );
+    // Filter out maxed stat upgrades (max level 5)
+    const availableStats = STAT_UPGRADES.filter(u => {
+      const lvl = (GameState.playerUpgradeLevels || {})[u.id] || 0;
+      return lvl < 5;
+    });
+
     const r = Math.random();
-    if (r < 0.55) {
+    // If rare roll but nothing available, fall back to coins
+    const canRollRare = unownedAbilities.length > 0 || availableStats.length > 0;
+
+    if (r < 0.55 || (!canRollRare && r >= 0.90)) {
       const coins = 10 + Math.floor(Math.random()*21);
-      return { rarity:'common',   type:'coins',  amount:coins, label:`+${coins} COINS`, icon:'◈',  desc:'Coin reward added to your stash.' };
+      return { rarity:'common', type:'coins', amount:coins, label:`+${coins} COINS`, icon:'◈', desc:'Coin reward added to your stash.' };
     } else if (r < 0.90) {
       const coins = 31 + Math.floor(Math.random()*20);
-      return { rarity:'uncommon', type:'coins',  amount:coins, label:`+${coins} COINS`, icon:'◈◈', desc:'A generous haul of coins.' };
-    } else if (r < 0.97) {
-      const id = ABILITY_IDS[Math.floor(Math.random()*ABILITY_IDS.length)];
-      return { rarity:'rare', type:'ability', id, label:ABILITY_NAMES[id]||id, icon:'⚡', desc:'Ability unlocked at no cost!' };
+      return { rarity:'uncommon', type:'coins', amount:coins, label:`+${coins} COINS`, icon:'◈◈', desc:'A generous haul of coins.' };
+    } else if (r < 0.97 && canRollRare) {
+      // Pick between ability and stat, weighted by availability
+      const pool = [
+        ...unownedAbilities.map(id => ({ type:'ability', id })),
+        ...availableStats.map(u => ({ type:'stat', id:u.id, name:u.name, desc:u.desc })),
+      ];
+      const pick = pool[Math.floor(Math.random() * pool.length)];
+      if (pick.type === 'ability') {
+        return { rarity:'rare', type:'ability', id:pick.id, label:ABILITY_NAMES[pick.id]||pick.id, icon:'⚡', desc:'Ability unlocked for free!' };
+      } else {
+        return { rarity:'rare', type:'stat', id:pick.id, label:pick.name, icon:'★', desc:pick.desc };
+      }
     } else {
-      const u = STAT_UPGRADES[Math.floor(Math.random()*STAT_UPGRADES.length)];
-      return { rarity:'rare', type:'stat', id:u.id, label:u.name, icon:'★', desc:u.desc };
+      // Ultra rare: gun upgrade part (pick random unowned)
+      // Fall back to big coin reward if nothing available
+      const bigCoins = 45 + Math.floor(Math.random()*16);
+      return { rarity:'rare', type:'coins', amount:bigCoins, label:`+${bigCoins} COINS`, icon:'◈◈◈', desc:'Jackpot! Rare coin haul.' };
     }
   }
 
   function buildStrip(winner) {
     const items = [];
     for (let i = 0; i < 55; i++) {
-      if (i === 45) { items.push(winner); continue; }
+      if (i === WIN_IDX) { items.push(winner); continue; }
       const r = Math.random();
       if (r < 0.68) {
         const c = 10 + Math.floor(Math.random()*41);
@@ -901,55 +925,70 @@ const LootBox = (() => {
     track.innerHTML = '';
     strip.forEach(item => track.appendChild(makeItemEl(item)));
 
-    // Randomize final stop slightly (±30px) so it feels natural
-    const jitter = (Math.random()-0.5)*60;
-    const finalScroll = (WIN_IDX - CENTER_OFFSET)*ITEM_W + jitter;
+    // Item effective width = ITEM_W + 6px margin (3px each side)
+    const SLOT = ITEM_W + 6;
 
+    // Center the winner item exactly under the center line.
+    // Viewport width ≈ min(560,96vw). We measure it from the parent.
+    const vpW = track.parentElement ? track.parentElement.offsetWidth : 520;
+    // finalScroll: scroll so that center of WIN_IDX item aligns with viewport center
+    const finalScroll = WIN_IDX * SLOT + SLOT / 2 - vpW / 2;
+
+    // Reset to start
     track.style.transition = 'none';
     track.style.transform  = 'translateX(0px)';
     void track.offsetWidth;
 
-    let tickTimer = null;
-    function setTickRate(ms) {
-      clearInterval(tickTimer);
-      if (ms > 0) tickTimer = setInterval(ms < 200 ? playTick : playSlow, ms);
-    }
+    // TOTAL duration ~4s — single WAAPI call, no phase switching
+    const TOTAL = 4200;
 
-    // Phase 1: blast off fast
-    setTickRate(55);
-    track.style.transition = `transform 1100ms cubic-bezier(0.1,0.0,0.25,1.0)`;
-    track.style.transform  = `translateX(-${finalScroll*0.55}px)`;
+    // Custom deceleration easing: starts very fast, then glides to a stop
+    // cubic-bezier(0.12, 0.8, 0.25, 1.0) — strong initial velocity, smooth landing
+    const anim = track.animate(
+      [
+        { transform: 'translateX(0px)',              easing: 'cubic-bezier(0.15,0.0,0.1,1.0)' },
+        { transform: `translateX(-${finalScroll}px)` },
+      ],
+      { duration: TOTAL, fill: 'forwards' }
+    );
 
-    setTimeout(() => {
-      // Phase 2: decelerate
-      setTickRate(130);
-      track.style.transition = `transform 1300ms cubic-bezier(0.0,0.0,0.18,1.0)`;
-      track.style.transform  = `translateX(-${finalScroll*0.83}px)`;
+    // Tick sounds: fast at start, slow toward end
+    let tickInterval = 55;
+    let tickTimer = setInterval(playTick, tickInterval);
 
+    // Gradually slow tick rate over time
+    const tickSchedule = [
+      { at: 1200, rate: 90,  fn: playTick },
+      { at: 2000, rate: 150, fn: playSlow },
+      { at: 2900, rate: 280, fn: playSlow },
+      { at: 3600, rate: 500, fn: playSlow },
+    ];
+    tickSchedule.forEach(({ at, rate, fn }) => {
       setTimeout(() => {
-        // Phase 3: crawl to stop
-        setTickRate(280);
-        track.style.transition = `transform 1600ms cubic-bezier(0.0,0.0,0.04,1.0)`;
-        track.style.transform  = `translateX(-${finalScroll}px)`;
+        clearInterval(tickTimer);
+        tickTimer = setInterval(fn, rate);
+      }, at);
+    });
 
-        setTimeout(() => {
-          clearInterval(tickTimer);
+    anim.onfinish = () => {
+      clearInterval(tickTimer);
+      // Commit final position as a style so it doesn't snap back
+      track.style.transform = `translateX(-${finalScroll}px)`;
+      anim.cancel();
 
-          // Highlight winner
-          const items = track.querySelectorAll('.lb-item');
-          const winEl = items[WIN_IDX];
-          if (winEl) {
-            const rar = RARITIES[winner.rarity] || RARITIES.common;
-            winEl.classList.add('lb-winner-glow');
-            winEl.style.setProperty('--win-color', rar.glow);
-          }
+      // Highlight winner item
+      const items = track.querySelectorAll('.lb-item');
+      const winEl = items[WIN_IDX];
+      if (winEl) {
+        const rar = RARITIES[winner.rarity] || RARITIES.common;
+        winEl.classList.add('lb-winner-glow');
+        winEl.style.setProperty('--win-color', rar.glow);
+      }
 
-          playLand();
-          playRarity(winner.rarity);
-          setTimeout(() => onDone && onDone(winner), 600);
-        }, 1620);
-      }, 1320);
-    }, 1120);
+      playLand();
+      playRarity(winner.rarity);
+      setTimeout(() => onDone && onDone(winner), 700);
+    };
   }
 
   // ── TIMER DISPLAY ────────────────────────────────────────
