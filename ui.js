@@ -782,16 +782,17 @@ const UI = (() => {
     updateScore, updateCoins, updateHealthBar, updateAbilityHUD, updateAbilityCooldowns,
     updateSpeedrunTimer, toggleSpeedrunTimer, startSpeedrunTimer, resetSpeedrunTimer, getElapsedSeconds, getElapsedFormatted,
     showGameOver, updateMainMenuStats, initAbilityEquipScreen, renderEquipScreen, initSettings,
-    initLootBox,
   };
 })();
 
-// ── LOOT BOX ─────────────────────────────────────────────────
-const LootBox = (() => {
-  const COOLDOWN_MS = 10 * 60 * 1000; // 10 minutes
-  const KEY = 'neon_lootbox_last';
 
-  // Reward pools
+// ═══════════════════════════════════════════════════════════════
+//  LOOT BOX — standalone module, no UI IIFE dependency
+// ═══════════════════════════════════════════════════════════════
+const LootBox = (() => {
+  const COOLDOWN_MS = 10 * 60 * 1000;
+  const LS_KEY = 'neon_lootbox_last';
+
   const ABILITY_IDS = [
     'rocket_surge','phase_dash','gravity_flip','energy_shield','pulse_slam',
     'drone','time_distort','platform_forge','chaos_engine','overdrive'
@@ -803,228 +804,239 @@ const LootBox = (() => {
     chaos_engine:'Chaos Engine', overdrive:'Overdrive'
   };
   const STAT_UPGRADES = [
-    { id:'health',         name:'+1 Max HP',       desc:'Increases max health by 1' },
-    { id:'jump_mult',      name:'+Jump Power',     desc:'Increases jump height' },
-    { id:'score_mult',     name:'+Score Mult',     desc:'Increases score gain' },
-    { id:'currency_boost', name:'+Coin Boost',     desc:'Earn more coins in runs' },
+    { id:'health',         name:'+1 Max HP',      desc:'Increases max health by 1' },
+    { id:'jump_mult',      name:'+Jump Power',    desc:'Jump height increased' },
+    { id:'score_mult',     name:'+Score Mult',    desc:'Score gain increased' },
+    { id:'currency_boost', name:'+Coin Boost',    desc:'Earn more coins in runs' },
   ];
 
-  // Rarity config
   const RARITIES = {
-    common:   { label:'COMMON',    color:'#8aa4b0', glow:'#8aa4b0', bg:'rgba(30,45,55,0.95)' },
-    uncommon: { label:'UNCOMMON',  color:'#00ff88', glow:'#00ff88', bg:'rgba(0,30,20,0.95)' },
-    rare:     { label:'RARE',      color:'#9900ff', glow:'#cc44ff', bg:'rgba(20,0,40,0.95)' },
+    common:   { label:'COMMON',    color:'#90aab8', glow:'#90aab8', bg:'linear-gradient(135deg,#0d1a22,#12232e)' },
+    uncommon: { label:'UNCOMMON',  color:'#00ff88', glow:'#00ff88', bg:'linear-gradient(135deg,#001a0f,#002a18)' },
+    rare:     { label:'RARE',      color:'#cc44ff', glow:'#cc44ff', bg:'linear-gradient(135deg,#14003a,#22006a)' },
   };
 
-  function getLastOpen() {
-    try { return parseInt(localStorage.getItem(KEY) || '0'); } catch(e) { return 0; }
-  }
-  function setLastOpen() {
-    try { localStorage.setItem(KEY, Date.now().toString()); } catch(e) {}
-  }
-  function getMsUntilNext() {
-    return Math.max(0, COOLDOWN_MS - (Date.now() - getLastOpen()));
-  }
+  function getLastOpen()  { try { return parseInt(localStorage.getItem(LS_KEY)||'0'); } catch(e){return 0;} }
+  function setLastOpen()  { try { localStorage.setItem(LS_KEY, Date.now().toString()); } catch(e){} }
+  function getMsRemain()  { return Math.max(0, COOLDOWN_MS - (Date.now() - getLastOpen())); }
 
   function roll() {
     const r = Math.random();
     if (r < 0.55) {
-      // Common: coins 10-30
-      const coins = 10 + Math.floor(Math.random() * 21);
-      return { rarity:'common', type:'coins', amount:coins,
-               label:`+${coins} COINS`, icon:'◈', desc:'Bonus coins added to your stash' };
+      const coins = 10 + Math.floor(Math.random()*21);
+      return { rarity:'common',   type:'coins',  amount:coins, label:`+${coins} COINS`, icon:'◈',  desc:'Coin reward added to your stash.' };
     } else if (r < 0.90) {
-      // Uncommon: coins 31-50
-      const coins = 31 + Math.floor(Math.random() * 20);
-      return { rarity:'uncommon', type:'coins', amount:coins,
-               label:`+${coins} COINS`, icon:'◈◈', desc:'A generous coin haul' };
+      const coins = 31 + Math.floor(Math.random()*20);
+      return { rarity:'uncommon', type:'coins',  amount:coins, label:`+${coins} COINS`, icon:'◈◈', desc:'A generous haul of coins.' };
     } else if (r < 0.97) {
-      // Rare: random ability (free unlock)
-      const id = ABILITY_IDS[Math.floor(Math.random() * ABILITY_IDS.length)];
-      return { rarity:'rare', type:'ability', id,
-               label:ABILITY_NAMES[id] || id, icon:'⚡', desc:'Ability unlocked for free!' };
+      const id = ABILITY_IDS[Math.floor(Math.random()*ABILITY_IDS.length)];
+      return { rarity:'rare', type:'ability', id, label:ABILITY_NAMES[id]||id, icon:'⚡', desc:'Ability unlocked at no cost!' };
     } else {
-      // Ultra rare: stat upgrade
-      const upg = STAT_UPGRADES[Math.floor(Math.random() * STAT_UPGRADES.length)];
-      return { rarity:'rare', type:'stat', id:upg.id,
-               label:upg.name, icon:'★', desc:upg.desc };
+      const u = STAT_UPGRADES[Math.floor(Math.random()*STAT_UPGRADES.length)];
+      return { rarity:'rare', type:'stat', id:u.id, label:u.name, icon:'★', desc:u.desc };
     }
   }
 
-  // Generate strip of items for the scroll animation (51 total, winner at index 42)
   function buildStrip(winner) {
     const items = [];
-    for (let i = 0; i < 51; i++) {
-      if (i === 42) { items.push(winner); continue; }
+    for (let i = 0; i < 55; i++) {
+      if (i === 45) { items.push(winner); continue; }
       const r = Math.random();
-      if (r < 0.7) {
-        const c = 10 + Math.floor(Math.random() * 41);
-        items.push({ rarity: c < 31 ? 'common' : 'uncommon', type:'coins', amount:c, label:`+${c}◈`, icon:'◈' });
+      if (r < 0.68) {
+        const c = 10 + Math.floor(Math.random()*41);
+        items.push({ rarity:c<31?'common':'uncommon', type:'coins', label:`+${c}◈`, icon:'◈' });
       } else {
-        const id = ABILITY_IDS[Math.floor(Math.random() * ABILITY_IDS.length)];
-        items.push({ rarity:'rare', type:'ability', id, label:ABILITY_NAMES[id]||id, icon:'⚡' });
+        const id = ABILITY_IDS[Math.floor(Math.random()*ABILITY_IDS.length)];
+        items.push({ rarity:'rare', type:'ability', label:ABILITY_NAMES[id]||id, icon:'⚡' });
       }
     }
     return items;
   }
 
-  function applyReward(reward) {
-    if (reward.type === 'coins') {
-      GameState.totalCoins = (GameState.totalCoins || 0) + reward.amount;
+  function applyReward(w) {
+    if (w.type === 'coins') {
+      GameState.totalCoins = (GameState.totalCoins||0) + w.amount;
       Save.save();
-    } else if (reward.type === 'ability') {
-      if (!GameState.ownedAbilities[reward.id]) {
-        GameState.ownedAbilities[reward.id] = { upgrades: [] };
+    } else if (w.type === 'ability') {
+      if (!GameState.ownedAbilities[w.id]) {
+        GameState.ownedAbilities[w.id] = { upgrades:[] };
         Save.save();
       }
-    } else if (reward.type === 'stat') {
-      const lvls = GameState.playerUpgradeLevels || {};
-      lvls[reward.id] = Math.min((lvls[reward.id] || 0) + 1, 5);
-      GameState.playerUpgradeLevels = lvls;
+    } else if (w.type === 'stat') {
+      if (!GameState.playerUpgradeLevels) GameState.playerUpgradeLevels = {};
+      GameState.playerUpgradeLevels[w.id] = Math.min((GameState.playerUpgradeLevels[w.id]||0)+1, 5);
       Save.save();
     }
   }
 
-  // ── ANIMATE ──────────────────────────────────────────────
-  function animate(winner, onDone) {
-    const strip = buildStrip(winner);
-    const ITEM_W = 120; // px per item
-    const VISIBLE_CENTER = 3; // show 7 items, winner is index 42
-    const totalScroll = (42 - VISIBLE_CENTER) * ITEM_W; // px to scroll
-
-    const track = document.getElementById('lb-track');
-    if (!track) return;
-
-    // Build strip HTML
-    track.innerHTML = '';
-    strip.forEach((item, i) => {
-      const rar = RARITIES[item.rarity] || RARITIES.common;
-      const el = document.createElement('div');
-      el.className = 'lb-item';
-      el.style.cssText = `background:${rar.bg};border-color:${rar.color};box-shadow:0 0 10px ${rar.glow}33;`;
-      el.innerHTML = `<div class="lb-item-icon" style="color:${rar.color}">${item.icon||'◈'}</div>
-                      <div class="lb-item-label" style="color:${rar.color}">${item.label}</div>
-                      <div class="lb-item-rarity" style="color:${rar.color}">${rar.label}</div>`;
-      if (i === 42) el.classList.add('lb-winner-item');
-      track.appendChild(el);
-    });
-
-    // Reset scroll
-    track.style.transition = 'none';
-    track.style.transform = 'translateX(0)';
-    void track.offsetWidth;
-
-    // Fast scroll with easing — 3 phases
-    let phase = 0;
-    const phases = [
-      { duration: 1200, easing: 'cubic-bezier(0.1, 0.0, 0.2, 1.0)', pct: 0.55 },
-      { duration: 1400, easing: 'cubic-bezier(0.0, 0.0, 0.2, 1.0)', pct: 0.85 },
-      { duration: 1800, easing: 'cubic-bezier(0.0, 0.0, 0.05, 1.0)', pct: 1.00 },
-    ];
-
-    // Tick sounds during scroll
-    let tickInterval = setInterval(() => SFX.play('loot_tick'), 80);
-
-    function runPhase() {
-      const p = phases[phase];
-      const scrollTo = totalScroll * p.pct;
-      track.style.transition = `transform ${p.duration}ms ${p.easing}`;
-      track.style.transform = `translateX(-${scrollTo}px)`;
-
-      // Slow down tick sound as we decelerate
-      if (phase === 1) { clearInterval(tickInterval); tickInterval = setInterval(() => SFX.play('loot_slow'), 160); }
-      if (phase === 2) { clearInterval(tickInterval); tickInterval = setInterval(() => SFX.play('loot_slow'), 300); }
-
-      setTimeout(() => {
-        phase++;
-        if (phase < phases.length) runPhase();
-        else {
-          clearInterval(tickInterval);
-          setTimeout(() => {
-            // Highlight winner
-            const winnerEl = track.querySelector('.lb-winner-item');
-            if (winnerEl) {
-              const rar = RARITIES[winner.rarity] || RARITIES.common;
-              winnerEl.style.transform = 'scaleY(1.15)';
-              winnerEl.style.boxShadow = `0 0 40px ${rar.glow}, 0 0 80px ${rar.glow}66`;
-              winnerEl.style.zIndex = '10';
-            }
-            // Play rarity sound
-            const snd = winner.rarity === 'rare' ? 'loot_rare'
-                      : winner.rarity === 'uncommon' ? 'loot_uncommon' : 'loot_common';
-            SFX.play(snd);
-            SFX.play('loot_land');
-            setTimeout(() => onDone && onDone(winner), 800);
-          }, 120);
-        }
-      }, p.duration);
-    }
-    runPhase();
+  // ── SFX helpers ──────────────────────────────────────────
+  function playTick()  { SFX.play('loot_tick');  }
+  function playSlow()  { SFX.play('loot_slow');  }
+  function playLand()  { SFX.play('loot_land');  }
+  function playRarity(r) {
+    if (r==='rare')     SFX.play('loot_rare');
+    else if (r==='uncommon') SFX.play('loot_uncommon');
+    else                SFX.play('loot_common');
   }
 
-  function init() {
-    const btn = document.getElementById('lb-open-btn');
-    const timerEl = document.getElementById('lb-timer');
-    const modal = document.getElementById('lb-modal');
-    const closeBtn = document.getElementById('lb-close');
-    const rewardEl = document.getElementById('lb-reward-text');
-    const rewardBox = document.getElementById('lb-reward-box');
+  // ── STRIP ANIMATION ──────────────────────────────────────
+  const ITEM_W = 128; // px
+  const WIN_IDX = 45;
+  const CENTER_OFFSET = 3; // items to left of center viewport
 
-    if (!btn) return;
+  function makeItemEl(item) {
+    const rar = RARITIES[item.rarity] || RARITIES.common;
+    const el = document.createElement('div');
+    el.className = 'lb-item';
+    el.style.cssText = `background:${rar.bg};border-color:${rar.color};`;
+    el.innerHTML = `
+      <div class="lb-item-icon" style="color:${rar.color}">${item.icon||'◈'}</div>
+      <div class="lb-item-label" style="color:${rar.color}">${item.label}</div>
+      <div class="lb-item-rarity" style="color:${rar.color}88">${rar.label}</div>`;
+    return el;
+  }
 
-    function updateTimer() {
-      const ms = getMsUntilNext();
-      if (ms <= 0) {
-        btn.disabled = false;
-        btn.textContent = '🎁 OPEN LOOT BOX';
-        btn.classList.add('lb-ready');
-        if (timerEl) timerEl.textContent = 'Ready!';
-      } else {
-        btn.disabled = true;
-        btn.classList.remove('lb-ready');
-        const m = Math.floor(ms / 60000);
-        const s = Math.floor((ms % 60000) / 1000);
-        if (timerEl) timerEl.textContent = `${m}m ${s.toString().padStart(2,'0')}s`;
-        btn.textContent = '🎁 LOOT BOX';
-      }
+  function runAnimation(track, winner, onDone) {
+    const strip = buildStrip(winner);
+    track.innerHTML = '';
+    strip.forEach(item => track.appendChild(makeItemEl(item)));
+
+    // Randomize final stop slightly (±30px) so it feels natural
+    const jitter = (Math.random()-0.5)*60;
+    const finalScroll = (WIN_IDX - CENTER_OFFSET)*ITEM_W + jitter;
+
+    track.style.transition = 'none';
+    track.style.transform  = 'translateX(0px)';
+    void track.offsetWidth;
+
+    let tickTimer = null;
+    function setTickRate(ms) {
+      clearInterval(tickTimer);
+      if (ms > 0) tickTimer = setInterval(ms < 200 ? playTick : playSlow, ms);
     }
 
-    setInterval(updateTimer, 1000);
-    updateTimer();
+    // Phase 1: blast off fast
+    setTickRate(55);
+    track.style.transition = `transform 1100ms cubic-bezier(0.1,0.0,0.25,1.0)`;
+    track.style.transform  = `translateX(-${finalScroll*0.55}px)`;
+
+    setTimeout(() => {
+      // Phase 2: decelerate
+      setTickRate(130);
+      track.style.transition = `transform 1300ms cubic-bezier(0.0,0.0,0.18,1.0)`;
+      track.style.transform  = `translateX(-${finalScroll*0.83}px)`;
+
+      setTimeout(() => {
+        // Phase 3: crawl to stop
+        setTickRate(280);
+        track.style.transition = `transform 1600ms cubic-bezier(0.0,0.0,0.04,1.0)`;
+        track.style.transform  = `translateX(-${finalScroll}px)`;
+
+        setTimeout(() => {
+          clearInterval(tickTimer);
+
+          // Highlight winner
+          const items = track.querySelectorAll('.lb-item');
+          const winEl = items[WIN_IDX];
+          if (winEl) {
+            const rar = RARITIES[winner.rarity] || RARITIES.common;
+            winEl.classList.add('lb-winner-glow');
+            winEl.style.setProperty('--win-color', rar.glow);
+          }
+
+          playLand();
+          playRarity(winner.rarity);
+          setTimeout(() => onDone && onDone(winner), 600);
+        }, 1620);
+      }, 1320);
+    }, 1120);
+  }
+
+  // ── TIMER DISPLAY ────────────────────────────────────────
+  let _timerInterval = null;
+  function startTimer(btn, timerEl) {
+    clearInterval(_timerInterval);
+    _timerInterval = setInterval(() => {
+      const ms = getMsRemain();
+      if (ms <= 0) {
+        clearInterval(_timerInterval);
+        btn.disabled = false;
+        btn.classList.add('lb-ready');
+        btn.innerHTML = '🎁 OPEN LOOT BOX';
+        if (timerEl) timerEl.textContent = 'READY';
+      } else {
+        const m = Math.floor(ms/60000);
+        const s = Math.floor((ms%60000)/1000);
+        if (timerEl) timerEl.textContent = `Next in ${m}m ${s.toString().padStart(2,'0')}s`;
+      }
+    }, 500);
+  }
+
+  // ── PUBLIC INIT ──────────────────────────────────────────
+  function init() {
+    const btn     = document.getElementById('lb-open-btn');
+    const timerEl = document.getElementById('lb-timer');
+    const modal   = document.getElementById('lb-modal');
+    const closeBtn= document.getElementById('lb-close');
+    const track   = document.getElementById('lb-track');
+    const rewardBox = document.getElementById('lb-reward-box');
+    const rewardText = document.getElementById('lb-reward-text');
+
+    if (!btn || !modal || !track) {
+      console.warn('LootBox: missing DOM elements', {btn,modal,track});
+      return;
+    }
+
+    // Set initial state
+    if (getMsRemain() <= 0) {
+      btn.disabled = false;
+      btn.classList.add('lb-ready');
+      btn.innerHTML = '🎁 OPEN LOOT BOX';
+      if (timerEl) timerEl.textContent = 'READY';
+    } else {
+      btn.disabled = false; // allow click, guard inside handler
+      btn.classList.remove('lb-ready');
+    }
+    startTimer(btn, timerEl);
 
     btn.addEventListener('click', () => {
-      if (getMsUntilNext() > 0) return;
-      setLastOpen();
-      updateTimer();
+      if (getMsRemain() > 0) return;
 
-      // Show modal
-      modal.style.display = 'flex';
-      rewardEl.textContent = '';
+      setLastOpen();
+      btn.disabled = true;
+      btn.classList.remove('lb-ready');
+      startTimer(btn, timerEl);
+
+      // Open modal
       rewardBox.style.display = 'none';
-      document.getElementById('lb-strip-wrap').style.display = 'block';
+      rewardText.innerHTML    = '';
+      modal.style.display     = 'flex';
+      void modal.offsetWidth;
+      modal.classList.add('lb-modal-in');
 
       const winner = roll();
-      animate(winner, (w) => {
-        // Apply reward
-        applyReward(w);
-        UI.updateMainMenuStats();
 
-        // Show reward summary
+      runAnimation(track, winner, (w) => {
+        applyReward(w);
+        if (typeof UI !== 'undefined') UI.updateMainMenuStats();
+
         const rar = RARITIES[w.rarity] || RARITIES.common;
-        rewardBox.style.display = 'block';
-        rewardBox.style.background = rar.bg;
-        rewardBox.style.borderColor = rar.color;
-        rewardBox.style.boxShadow = `0 0 30px ${rar.glow}88`;
-        rewardEl.innerHTML = `<span style="color:${rar.color};font-size:28px">${w.icon||'◈'}</span><br>
-          <span style="color:${rar.color};font-size:18px;letter-spacing:2px">${w.label}</span><br>
-          <span style="color:${rar.color};font-size:11px;opacity:0.7">${w.desc||''}</span><br>
-          <span style="color:${rar.color};font-size:11px;letter-spacing:3px;margin-top:6px;display:block">${rar.label}</span>`;
+        rewardBox.style.display  = 'block';
+        rewardBox.style.cssText  = `display:block;background:${rar.bg};border:1px solid ${rar.color};box-shadow:0 0 40px ${rar.glow}66,0 0 80px ${rar.glow}22;`;
+        rewardText.innerHTML = `
+          <div class="lb-reward-icon" style="color:${rar.color};text-shadow:0 0 20px ${rar.glow}">${w.icon||'◈'}</div>
+          <div class="lb-reward-label" style="color:${rar.color}">${w.label}</div>
+          <div class="lb-reward-desc">${w.desc||''}</div>
+          <div class="lb-reward-rarity" style="color:${rar.color};text-shadow:0 0 10px ${rar.glow}">${rar.label}</div>`;
       });
     });
 
-    if (closeBtn) closeBtn.addEventListener('click', () => {
-      modal.style.display = 'none';
-    });
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => {
+        modal.classList.remove('lb-modal-in');
+        setTimeout(() => { modal.style.display='none'; }, 220);
+      });
+    }
   }
 
   return { init };
