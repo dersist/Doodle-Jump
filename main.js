@@ -254,15 +254,15 @@ const Combo = {
   // Call when player lands on a platform
   onLand(platform) {
     if (!this.isSpecial(platform.type)) {
-      // Normal pad: end combo and pay out
       this.end();
       this.lastPlatform = null;
       return;
     }
 
     if (platform === this.lastPlatform) {
-      // Same exact platform again: break combo
-      this.end();
+      // Same exact platform: break combo
+      SFX.play('combo_break');
+      this.end(true); // silent end (already played break sfx)
       this.lastPlatform = null;
       return;
     }
@@ -270,16 +270,36 @@ const Combo = {
     // New special platform: increment combo
     this.count++;
     this.lastPlatform = platform;
-    this.timeout = 300; // 5 seconds to continue combo
-
-    // Award coins equal to combo count
+    this.timeout = 300;
     this.comboCoins = this.count;
 
-    // Play sound and show toast
-    SFX.play('purchase');
+    // Escalating pitch sound per tier
+    const sfxName = this.count >= 5 ? 'combo_max'
+                  : this.count === 4 ? 'combo_4'
+                  : this.count === 3 ? 'combo_3'
+                  : this.count === 2 ? 'combo_2'
+                  : 'combo_1';
+    SFX.play(sfxName);
+
+    // Particle burst at player position
+    if (this.count >= 2 && typeof Particles !== 'undefined' && typeof GameState !== 'undefined') {
+      const p = GameState.player;
+      if (p) {
+        const colors = ['#ffee00','#ff6600','#ff00ff','#00f5ff','#00ff88'];
+        Particles.burst(
+          p.x + p.w / 2,
+          p.y + p.h / 2 - GameState.cameraY,
+          colors[(this.count - 2) % colors.length],
+          6 + this.count * 2
+        );
+      }
+    }
+
+    // Animate HUD
+    this._triggerHUDAnim = true;
+
     if (this.count >= 2) {
-      UI.showToast(`${this.count}x COMBO! +${this.count}◈`, 1200);
-      if (this.count >= 5) SFX.play('boost');
+      UI.showToast(`${this.count}× COMBO! +${this.count}◈`, 900);
     }
   },
 
@@ -291,21 +311,23 @@ const Combo = {
     }
   },
 
-  // End combo and award coins
-  end() {
+  // End combo and award coins; silent=true skips coin sfx
+  end(silent) {
     if (this.count > 0) {
       const coins = this.comboCoins;
       GameState.coins += coins;
       GameState.totalCoins += coins;
       if (typeof RunStats !== 'undefined') RunStats.coinsCollected += coins;
-      if (this.count >= 3) {
-        UI.showToast(`COMBO ENDED! +${coins}◈`, 1500);
+      if (!silent && this.count >= 3) {
+        SFX.play('combo_end');
+        UI.showToast(`🔥 COMBO x${this.count} ENDED! +${coins}◈`, 1800);
       }
     }
     this.count = 0;
     this.comboCoins = 0;
     this.timeout = 0;
     this.lastPlatform = null;
+    this._triggerHUDAnim = false;
   },
 
   reset() {
@@ -569,9 +591,24 @@ function update(dt, rawDt) {
   if (comboEl && comboVal) {
     if (Combo.count >= 2) {
       comboEl.style.display = 'block';
-      comboVal.textContent = Combo.count + 'x COMBO';
+      comboVal.textContent = Combo.count + '× COMBO';
+      // Colour escalation
+      const colours = ['#ffee00','#ff9900','#ff00ff','#00f5ff','#00ff88'];
+      comboVal.style.color = colours[Math.min(Combo.count - 2, colours.length - 1)];
+      comboVal.style.textShadow = `0 0 20px ${colours[Math.min(Combo.count - 2, colours.length - 1)]}`;
+      if (Combo._triggerHUDAnim) {
+        Combo._triggerHUDAnim = false;
+        // Re-trigger CSS pop by removing and re-adding the class
+        comboVal.classList.remove('combo-pop');
+        void comboVal.offsetWidth; // force reflow
+        comboVal.classList.add('combo-pop');
+      }
+      // Timeout bar
+      const pct = Math.max(0, Combo.timeout / 300);
+      comboEl.style.setProperty('--combo-pct', pct);
     } else {
       comboEl.style.display = 'none';
+      comboVal.classList.remove('combo-pop');
     }
   }
 

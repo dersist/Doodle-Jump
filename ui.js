@@ -172,6 +172,13 @@ const SFX = (() => {
     explosion:    () => { playTone(150, 'sawtooth', 0.3, 0.4); playTone(100, 'square', 0.25, 0.4); },
     gameover:     () => { playTone(300, 'sawtooth', 0.4, 0.3); setTimeout(()=>playTone(200,'sawtooth',0.5,0.5),300); setTimeout(()=>playTone(100,'square',0.6,0.8),700); },
     click:        () => playTone(600, 'sine', 0.05, 0.1),
+    combo_1:      () => playTone(520, 'sine', 0.12, 0.18),
+    combo_2:      () => { playTone(620, 'sine', 0.12, 0.2); playTone(780, 'sine', 0.08, 0.15); },
+    combo_3:      () => { playTone(700, 'square', 0.1, 0.22); playTone(900, 'sine', 0.1, 0.18); },
+    combo_4:      () => { playTone(800, 'square', 0.12, 0.22); playTone(1050, 'sine', 0.1, 0.2); setTimeout(() => playTone(1200, 'sine', 0.08, 0.15), 80); },
+    combo_max:    () => { [600,800,1000,1300].forEach((f,i) => setTimeout(() => playTone(f, 'sine', 0.2, 0.25), i * 60)); },
+    combo_break:  () => { playTone(400, 'sawtooth', 0.15, 0.2); playTone(250, 'square', 0.1, 0.3); },
+    combo_end:    () => { playTone(700, 'sine', 0.1, 0.2); playTone(900, 'sine', 0.12, 0.25); setTimeout(() => playTone(1100, 'sine', 0.15, 0.3), 100); },
   };
 
   function play(soundName) {

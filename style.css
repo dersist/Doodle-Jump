@@ -1116,15 +1116,44 @@ html, body {
 #diff-easy.active { background: rgba(0,255,136,0.12); border-color: var(--neon-green); color: var(--neon-green); }
 
 /* ══════════════════════ COMBO */
+#combo-display {
+  position: relative;
+  text-align: center;
+  pointer-events: none;
+}
+
+#combo-display::after {
+  content: '';
+  display: block;
+  height: 3px;
+  margin-top: 4px;
+  border-radius: 2px;
+  background: currentColor;
+  transform-origin: left;
+  transform: scaleX(var(--combo-pct, 1));
+  transition: transform 0.1s linear;
+  opacity: 0.6;
+}
+
 .combo-val {
+  display: inline-block;
   font-family: var(--font-main);
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 900;
+  letter-spacing: 2px;
   color: var(--neon-yellow);
   text-shadow: 0 0 16px var(--neon-yellow);
-  animation: comboPop 0.15s ease-out;
 }
+
+.combo-val.combo-pop {
+  animation: comboPop 0.35s cubic-bezier(0.36, 0.07, 0.19, 0.97) forwards;
+}
+
 @keyframes comboPop {
-  0%   { transform: scale(1.5); }
+  0%   { transform: scale(1); }
+  20%  { transform: scale(1.7) rotate(-4deg); }
+  40%  { transform: scale(0.85) rotate(2deg); }
+  60%  { transform: scale(1.2) rotate(-1deg); }
+  80%  { transform: scale(0.95); }
   100% { transform: scale(1); }
 }
