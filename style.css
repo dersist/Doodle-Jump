@@ -1646,3 +1646,103 @@ html, body {
 .daily-row-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 .daily-reward-main { font-family: var(--font-main); font-size: 11px; color: var(--neon-yellow); font-weight: 700; }
 .daily-prog-main { font-family: var(--font-mono); font-size: 9px; color: var(--text-dim); }
+
+/* ══════════════════════ ASCENSION HUD */
+#ascension-hud {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  min-width: 120px;
+}
+#asc-progress-bar {
+  width: 100%;
+  height: 5px;
+  background: rgba(200,100,255,0.15);
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid rgba(200,100,255,0.2);
+}
+#asc-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6600cc, #cc44ff);
+  border-radius: 3px;
+  transition: width 0.4s ease;
+  box-shadow: 0 0 6px #9900ff;
+}
+#asc-progress-text {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: rgba(200,100,255,0.7);
+  letter-spacing: 1px;
+}
+#btn-ascend {
+  font-family: var(--font-main);
+  font-size: 10px;
+  letter-spacing: 2px;
+  padding: 5px 10px;
+  background: rgba(200,100,255,0.15);
+  border: 1px solid #cc44ff;
+  color: #cc44ff;
+  cursor: pointer;
+  border-radius: 3px;
+  animation: ascendPulse 1.2s ease-in-out infinite alternate;
+}
+@keyframes ascendPulse {
+  0%   { box-shadow: 0 0 6px rgba(200,100,255,0.4); }
+  100% { box-shadow: 0 0 20px rgba(200,100,255,0.9), 0 0 40px rgba(200,100,255,0.3); }
+}
+
+/* ══════════════════════ MASTERY ACCORDION (wardrobe) */
+.wardrobe-mastery-acc { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+.macc-item { border: 1px solid rgba(255,200,0,0.12); border-radius: 4px; overflow: hidden; }
+.macc-item.open .macc-body { display: block !important; }
+.macc-item.open .macc-arrow { transform: rotate(180deg); }
+.macc-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 10px; cursor: pointer; background: rgba(255,200,0,0.03);
+  transition: background 0.15s;
+}
+.macc-header:hover { background: rgba(255,200,0,0.07); }
+.macc-left { display: flex; align-items: center; gap: 8px; }
+.macc-name { font-family: var(--font-main); font-size: 10px; letter-spacing: 1px; color: var(--text-bright); }
+.macc-stars { font-size: 10px; }
+.macc-right { display: flex; align-items: center; gap: 8px; }
+.macc-bar-wrap { width: 60px; }
+.macc-bar { height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; }
+.macc-fill { height: 100%; background: var(--neon-yellow); border-radius: 2px; }
+.macc-uses { font-family: var(--font-mono); font-size: 8px; color: var(--text-dim); white-space: nowrap; }
+.macc-arrow { font-size: 10px; color: var(--text-dim); transition: transform 0.2s; }
+.macc-body { display: none; padding: 6px 10px 8px; border-top: 1px solid rgba(255,200,0,0.08); }
+.macc-passive {
+  display: flex; align-items: center; gap: 7px;
+  padding: 4px 0; font-family: var(--font-mono); font-size: 10px;
+}
+.macc-passive.unlocked { color: var(--text-bright); }
+.macc-passive.locked-passive { color: rgba(255,255,255,0.25); }
+.mp-icon { font-size: 13px; min-width: 18px; }
+.mp-stars { font-size: 9px; min-width: 50px; }
+.mp-desc { flex: 1; }
+.mp-active { font-family: var(--font-main); font-size: 8px; letter-spacing: 1px; color: #00ff88; padding: 1px 5px; border: 1px solid #00ff88; border-radius: 2px; white-space: nowrap; }
+
+/* ══════════════════════ MASTERY IN SHOP */
+.ability-mastery-row { font-size: 11px; margin-top: 2px; }
+.mastery-section { border-top: 1px solid rgba(255,200,0,0.1); }
+.mastery-toggle {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 12px; cursor: pointer; font-family: var(--font-main);
+  font-size: 9px; letter-spacing: 2px; color: rgba(255,200,0,0.7);
+  background: rgba(255,200,0,0.03); transition: background 0.15s;
+}
+.mastery-toggle:hover { background: rgba(255,200,0,0.07); }
+.mastery-toggle-arr { font-size: 10px; }
+.mastery-body { padding: 6px 12px 8px; background: rgba(0,0,0,0.2); }
+.mastery-passive-row {
+  display: flex; align-items: center; gap: 7px;
+  padding: 3px 0; font-family: var(--font-mono); font-size: 10px;
+}
+.mastery-passive-row.unlocked { color: var(--text-bright); }
+.mastery-passive-row.locked-passive { color: rgba(255,255,255,0.25); }
+
+/* ══════════════════════ MASTERY IN EQUIP SCREEN */
+.oai-mastery { font-size: 11px; margin-top: 2px; }

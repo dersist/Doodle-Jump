@@ -108,24 +108,46 @@ const CosmeticsUI = (() => {
     }
     html += '</div>';
 
-    // Mastery stars
+    // Mastery — expandable accordion
     html += '<div class="wardrobe-section-title">ABILITY MASTERY</div>';
-    html += '<div class="wardrobe-mastery">';
+    html += '<div class="wardrobe-mastery-acc">';
     const abilityIds = ['rocket_surge','phase_dash','gravity_flip','energy_shield','pulse_slam',
                         'drone','time_distort','platform_forge','chaos_engine','overdrive'];
-    const names = { rocket_surge:'Rocket',phase_dash:'Phase',gravity_flip:'Flip',energy_shield:'Shield',
-                    pulse_slam:'Slam',drone:'Drone',time_distort:'Time',platform_forge:'Forge',
-                    chaos_engine:'Chaos',overdrive:'Overdrive' };
+    const names = { rocket_surge:'🚀 Rocket Surge', phase_dash:'👻 Phase Dash', gravity_flip:'🔄 Gravity Flip',
+                    energy_shield:'🛡️ Energy Shield', pulse_slam:'⬇️ Pulse Slam', drone:'🤖 Drone',
+                    time_distort:'⏱️ Time Distort', platform_forge:'🔧 Platform Forge',
+                    chaos_engine:'🎲 Chaos Engine', overdrive:'⚡ Overdrive' };
     for (const id of abilityIds) {
-      const stars = Mastery.getStars(id);
-      const uses  = Mastery.getUses(id);
-      const next  = Mastery.getNextThreshold(id);
-      const pct   = next ? Math.min(100, (uses / next) * 100) : 100;
-      html += `<div class="mastery-row">
-        <div class="mastery-name">${names[id]||id}</div>
-        <div class="mastery-stars">${'⭐'.repeat(stars)}${'☆'.repeat(5-stars)}</div>
-        <div class="mastery-bar"><div class="mastery-fill" style="width:${pct.toFixed(0)}%"></div></div>
-        <div class="mastery-uses">${uses}${next ? '/' + next : ' MAX'}</div>
+      const stars  = Mastery.getStars(id);
+      const uses   = Mastery.getUses(id);
+      const next   = Mastery.getNextThreshold(id);
+      const pct    = next ? Math.min(100, (uses / next) * 100) : 100;
+      const passives = Mastery.getPassives(id);
+      const accId  = 'macc_' + id;
+
+      html += `<div class="macc-item" id="${accId}">
+        <div class="macc-header" onclick="document.getElementById('${accId}').classList.toggle('open')">
+          <div class="macc-left">
+            <span class="macc-name">${names[id]||id}</span>
+            <span class="macc-stars">${'⭐'.repeat(stars)}${'☆'.repeat(5-stars)}</span>
+          </div>
+          <div class="macc-right">
+            <div class="macc-bar-wrap"><div class="macc-bar"><div class="macc-fill" style="width:${pct.toFixed(0)}%"></div></div></div>
+            <span class="macc-uses">${uses}${next?'/'+next:' MAX'}</span>
+            <span class="macc-arrow">▾</span>
+          </div>
+        </div>
+        <div class="macc-body">
+          ${passives.map(p => {
+            const ul = stars >= p.stars;
+            return `<div class="macc-passive ${ul?'unlocked':'locked-passive'}">
+              <span class="mp-icon">${p.icon}</span>
+              <span class="mp-stars">${'⭐'.repeat(p.stars)}</span>
+              <span class="mp-desc">${p.desc}</span>
+              ${ul ? '<span class="mp-active">ACTIVE</span>' : ''}
+            </div>`;
+          }).join('')}
+        </div>
       </div>`;
     }
     html += '</div>';

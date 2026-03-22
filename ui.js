@@ -681,11 +681,14 @@ const UI = (() => {
 
       const item = document.createElement('div');
       item.className = 'owned-ability-item';
+      const mStars = (typeof Mastery !== 'undefined') ? Mastery.getStars(id) : 0;
+      const mStarStr = '⭐'.repeat(mStars) + '☆'.repeat(5 - mStars);
       item.innerHTML = `
         <div class="oai-icon">${def.icon}</div>
         <div class="oai-info">
           <div class="oai-name">${def.name}</div>
           <div class="oai-upgrades">${upgCount}/9 upgrades</div>
+          <div class="oai-mastery" title="Mastery ${mStars}/5">${mStarStr}</div>
         </div>
         <div class="equip-slot-btns">
           <button class="equip-btn" data-slot="1">SL1</button>

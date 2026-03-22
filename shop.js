@@ -51,11 +51,17 @@ const Shop = (() => {
       const btnText = owned ? '✓ OWNED' : (canAfford ? 'BUY ' + ability.price : ability.price + ' ◈');
       const btnClass = owned ? 'owned-btn' : (canAfford ? 'can-buy' : 'cant-afford');
 
+      const mStars = (typeof Mastery !== 'undefined') ? Mastery.getStars(ability.id) : 0;
+      const mUses  = (typeof Mastery !== 'undefined') ? Mastery.getUses(ability.id) : 0;
+      const mNext  = (typeof Mastery !== 'undefined') ? Mastery.getNextThreshold(ability.id) : null;
+      const mStr   = owned ? `${'⭐'.repeat(mStars)}${'☆'.repeat(5-mStars)} <span style="opacity:0.5;font-size:9px">(${mUses}${mNext?'/'+mNext:' MAX'})</span>` : '';
+
       header.innerHTML = `
         <div class="ability-icon">${ability.icon}</div>
         <div class="ability-info">
           <div class="ability-name">${ability.name}</div>
           <div class="ability-desc">${ability.desc}</div>
+          ${owned ? `<div class="ability-mastery-row">${mStr}</div>` : ''}
         </div>
         ${!owned ? `<div class="ability-price">${ability.price} ◈</div>` : ''}
         <button class="ability-buy-btn ${btnClass}" data-id="${ability.id}">
@@ -71,6 +77,37 @@ const Shop = (() => {
       }
 
       card.appendChild(header);
+
+      // Mastery passives expandable (only if owned)
+      if (owned && typeof Mastery !== 'undefined') {
+        const mPassives = Mastery.getPassives(ability.id);
+        const mStarsNow = Mastery.getStars(ability.id);
+        if (mPassives.length > 0) {
+          const masterySection = document.createElement('div');
+          masterySection.className = 'mastery-section';
+          const toggle = document.createElement('div');
+          toggle.className = 'mastery-toggle';
+          toggle.innerHTML = `<span>⭐ MASTERY PASSIVES</span><span class="mastery-toggle-arr">▾</span>`;
+          const masteryBody = document.createElement('div');
+          masteryBody.className = 'mastery-body';
+          masteryBody.style.display = 'none';
+          mPassives.forEach((p, i) => {
+            const unlocked = mStarsNow >= p.stars;
+            const row = document.createElement('div');
+            row.className = 'mastery-passive-row' + (unlocked ? ' unlocked' : ' locked-passive');
+            row.innerHTML = `<span class="mp-icon">${p.icon}</span><span class="mp-stars">${'⭐'.repeat(p.stars)}</span><span class="mp-desc">${p.desc}</span>`;
+            masteryBody.appendChild(row);
+          });
+          toggle.addEventListener('click', () => {
+            const open = masteryBody.style.display !== 'none';
+            masteryBody.style.display = open ? 'none' : 'block';
+            toggle.querySelector('.mastery-toggle-arr').textContent = open ? '▾' : '▴';
+          });
+          masterySection.appendChild(toggle);
+          masterySection.appendChild(masteryBody);
+          card.appendChild(masterySection);
+        }
+      }
 
       // Upgrade tree (only if owned)
       if (owned) {

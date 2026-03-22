@@ -605,14 +605,43 @@ function update(dt, rawDt) {
   UI.updateAbilityCooldowns();
   UI.updateSpeedrunTimer();
 
-  // Milestone indicator
+  // Ascension progress HUD
+  if (typeof Prestige !== 'undefined') {
+    const ascHud  = document.getElementById('ascension-hud');
+    const ascFill = document.getElementById('asc-progress-fill');
+    const ascText = document.getElementById('asc-progress-text');
+    const ascBtn  = document.getElementById('btn-ascend');
+    if (ascHud) {
+      ascHud.style.display = 'block';
+      const needed = Prestige.getNextHeight();
+      const cur    = GameState.score;
+      const pct    = Math.min(100, (cur / needed) * 100);
+      if (ascFill) ascFill.style.width = pct.toFixed(1) + '%';
+      if (ascText) {
+        const lvl = Prestige.getLevel();
+        if (lvl >= 10) {
+          ascText.textContent = 'MAX ASCENSION';
+        } else {
+          ascText.textContent = `${cur.toLocaleString()} / ${needed.toLocaleString()}`;
+        }
+      }
+      if (ascBtn) ascBtn.style.display = Prestige.canAscend() ? 'block' : 'none';
+    }
+  }
+
+  // Milestone indicator (only in-game)
   if (typeof Milestones !== 'undefined' && GameState.score > 0) {
     const mi = document.getElementById('milestone-indicator');
     const ml = document.getElementById('milestone-label');
+    const gameScreenActive = document.getElementById('game-screen')?.classList.contains('active');
     if (mi && ml) {
-      const next = Milestones.getNextMilestone(GameState.score);
-      ml.textContent = `🏁 ${next.height.toLocaleString()} → +${next.coins}◈`;
-      mi.style.display = 'block';
+      if (gameScreenActive) {
+        const next = Milestones.getNextMilestone(GameState.score);
+        ml.textContent = `🏁 ${next.height.toLocaleString()} → +${next.coins}◈`;
+        mi.style.display = 'block';
+      } else {
+        mi.style.display = 'none';
+      }
     }
   }
 

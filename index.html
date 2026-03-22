@@ -76,6 +76,12 @@
         </div>
       </div>
       <div id="hud-right">
+        <div id="ascension-hud" style="display:none">
+          <div class="hud-label">ASCENSION</div>
+          <div id="asc-progress-bar"><div id="asc-progress-fill"></div></div>
+          <div class="hud-value" id="asc-progress-text">0 / 10,000</div>
+          <button id="btn-ascend" style="display:none" onclick="if(typeof Prestige!=='undefined')Prestige.ascend()">✨ ASCEND</button>
+        </div>
         <div id="ability-slots">
           <div class="ability-slot" id="slot-1" data-slot="1">
             <div class="slot-key">1</div>

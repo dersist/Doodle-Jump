@@ -50,7 +50,7 @@ const Abilities = (() => {
       if (s.charges <= 0) return false; // waiting on recharge
       s.charges--;
       doRocketSurge();
-      // Only start cooldown when all charges are spent
+      if (typeof Mastery !== 'undefined') Mastery.recordUse(abilityId);
       if (s.charges <= 0) {
         const cdr = 1 - PlayerUpgrades.getCooldownReduction();
         s.cooldown = Math.max(30, BASE_COOLDOWNS[abilityId] * cdr);
