@@ -199,9 +199,8 @@ function updateCamera() {
   if (!p) return;
 
   // Target: keep player at 40% from top of screen
-  // cameraY = world Y that corresponds to the TOP of the screen
-  // screenY = worldY - cameraY  =>  cameraY = worldY - screenY
-  const targetCamY = p.y - GameState.canvasH * 0.4;
+  // Keep player at 60% down the screen — platform they bounced from stays visible below
+  const targetCamY = p.y - GameState.canvasH * 0.6;
 
   // Camera only moves UP (cameraY only decreases)
   if (targetCamY < GameState.cameraY) {
@@ -227,8 +226,8 @@ const RunStats = {
 };
 
 function updateScore() {
-  // Score updates every frame — one point per pixel of height gained
-  const rawScore = Math.max(0, startCameraY - GameState.cameraY);
+  // Divide by 50: ~50 pixels per "meter", so first jump gives ~4-8 height units
+  const rawScore = Math.max(0, Math.floor((startCameraY - GameState.cameraY) / 50));
   const mult = PlayerUpgrades.getScoreBonus();
   const newScore = Math.floor(rawScore * mult);
   if (newScore > GameState.score) {
@@ -333,7 +332,7 @@ function initRun() {
   GameState.player = Player.create(GameState.canvasW, GameState.canvasH);
 
   // Set camera: player starts near bottom of screen so platforms above are visible
-  GameState.cameraY = GameState.player.y - GameState.canvasH * 0.7;
+  GameState.cameraY = GameState.player.y - GameState.canvasH * 0.6;
   startCameraY = GameState.cameraY; // anchor for score calculation
 
   // Reset input

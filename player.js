@@ -175,6 +175,7 @@ const Player = (() => {
     for (const p of Platforms.getAll()) {
       if (p.type === 'phase' && !p.phaseVisible) continue;
       if (p.broken) continue;
+      if (p.cracking) continue; // already had first landing — treat as broken
 
       if (GameState.gravityFlipped) {
         // FLIPPED: player rises upward, collides with UNDERSIDE of platforms
