@@ -416,7 +416,8 @@ const UI = (() => {
     const container = document.getElementById('health-bar-container');
     if (!container) return;
 
-    if (PlayerUpgrades.hasHealthSystem()) {
+    const _showHp = PlayerUpgrades.hasHealthSystem() || ((typeof Prestige !== 'undefined') && Prestige.hpBonus() > 0);
+    if (_showHp) {
       container.style.display = 'flex';
       const pct = Math.max(0, hp / maxHp) * 100;
       if (bar) bar.style.width = pct + '%';

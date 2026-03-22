@@ -24,7 +24,7 @@ const Player = (() => {
       moveSpeedMult: 1,
       airControl: Physics.BASE_AIR_CTRL,
       maxFallSpeed: Physics.BASE_MAX_FALL,
-      fireRate: 18,        // frames between shots
+      fireRate: 18 / ((typeof Prestige !== 'undefined') ? Prestige.bulletBonus() : 1), // p7 reduces interval
       bulletDamage: 1,
       slamSpeed: 22,
 
@@ -66,10 +66,12 @@ const Player = (() => {
       overdriveGlow: 0,
     };
 
-    // Apply health system if purchased
-    if (PlayerUpgrades.hasHealthSystem()) {
-      p.maxHealth = PlayerUpgrades.getMaxHealth() + (typeof Prestige !== 'undefined' ? Prestige.hpBonus() : 0);
-      p.health = p.maxHealth; // includes prestige p5 bonus
+    // Apply health system if purchased OR prestige p5 iron will is active
+    const prestigeHp = (typeof Prestige !== 'undefined') ? Prestige.hpBonus() : 0;
+    if (PlayerUpgrades.hasHealthSystem() || prestigeHp > 0) {
+      const baseHp = PlayerUpgrades.hasHealthSystem() ? PlayerUpgrades.getMaxHealth() : 1;
+      p.maxHealth = baseHp + prestigeHp;
+      p.health    = p.maxHealth;
     }
 
     return p;
@@ -475,7 +477,8 @@ const Player = (() => {
       * (typeof Prestige !== 'undefined' ? Prestige.bulletBonus() : 1);
 
     const baseSpd = (AbilityUpgrades.slowBoostsBullets() && GameState.timeSlowTimer > 0 ? 14 : 10)
-      * GunUpgrades.getBulletSpeedMult();
+      * GunUpgrades.getBulletSpeedMult()
+      * (typeof Prestige !== 'undefined' ? Prestige.bulletBonus() : 1); // p7 hair trigger
 
     const r      = GunUpgrades.getBulletRadius();
     const color  = GameState.overdriveTimer > 0 ? '#ffee00' : '#00f5ff';
@@ -554,7 +557,8 @@ const Player = (() => {
 
     const reducedDmg = amount * AbilityUpgrades.shieldReducesDmg();
 
-    if (PlayerUpgrades.hasHealthSystem()) {
+    const _hasHp = PlayerUpgrades.hasHealthSystem() || ((typeof Prestige !== 'undefined') && Prestige.hpBonus() > 0);
+    if (_hasHp) {
       player.health -= reducedDmg;
       UI.updateHealthBar(player.health, player.maxHealth);
       if (player.health <= 0) {
@@ -583,7 +587,7 @@ const Player = (() => {
           else GameState.gameOver = true;
         }
       }
-    } else {
+    } else if (!_hasHp) {
       if (typeof handleGameOver === 'function') handleGameOver();
       else GameState.gameOver = true;
     }

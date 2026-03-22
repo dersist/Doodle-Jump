@@ -607,7 +607,7 @@ function update(dt, rawDt) {
   Particles.update();
 
   // HUD
-  const maxHp = PlayerUpgrades.getMaxHealth();
+  const maxHp = (GameState.player && GameState.player.maxHealth > 0) ? GameState.player.maxHealth : PlayerUpgrades.getMaxHealth();
   UI.updateScore(GameState.score);
   UI.updateCoins(GameState.totalCoins);
   UI.updateHealthBar(p?.health || 0, maxHp);

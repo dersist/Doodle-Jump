@@ -9,10 +9,11 @@ const Platforms = (() => {
   // Returns platform width scale: difficulty-based at score 0, shrinks to 1x at 100k
   function getPlatformScale(score) {
     const cfg = (typeof getDiffConfig === 'function') ? getDiffConfig() : { platScale: 2.0 };
-    const base = cfg.platScale; // 3 easy, 2 medium, 1 hard
-    // Scale down from base to 1.0 over 100k score
+    const base = cfg.platScale;
     const prestigeBonus = (typeof Prestige !== 'undefined') ? Prestige.platScaleBonus() : 1;
-    return Math.max(1.0, base - ((base - 1.0) * Math.min(score, 100000) / 100000)) * prestigeBonus;
+    // Prestige bonus applied to the raw scale before clamping - ensures floor also scales
+    const raw = (base - ((base - 1.0) * Math.min(score, 100000) / 100000)) * prestigeBonus;
+    return Math.max(1.0 * prestigeBonus, raw); // floor also scaled by prestige
   }
 
   // Platform types
