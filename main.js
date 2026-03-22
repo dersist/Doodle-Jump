@@ -714,6 +714,35 @@ function wireButtons() {
     Shop.open(false);
   });
 
+  // Daily challenges toggle on main menu
+  document.getElementById('btn-daily')?.addEventListener('click', () => {
+    SFX.play('click');
+    const panel = document.getElementById('daily-panel');
+    if (!panel) return;
+    const isOpen = panel.style.display !== 'none';
+    if (isOpen) { panel.style.display = 'none'; return; }
+
+    const chs = typeof DailyChallenge !== 'undefined' ? DailyChallenge.getChallenges() : [];
+    const ms = typeof DailyChallenge !== 'undefined' ? DailyChallenge.getTimeUntilReset() : 0;
+    const h = Math.floor(ms/3600000), m = Math.floor((ms%3600000)/60000);
+    let html = `<div class="daily-header">📅 DAILY CHALLENGES <span class="daily-reset">Resets in ${h}h ${m}m</span></div>`;
+    for (const ch of chs) {
+      const pct = ch.target > 0 ? Math.min(100, ((ch.progress||0)/ch.target)*100) : 0;
+      html += `<div class="daily-row-main ${ch.completed?'done':''}">
+        <div class="daily-row-left">
+          <div class="daily-desc-main">${ch.desc}</div>
+          <div class="daily-bar-main"><div class="daily-fill-main" style="width:${pct.toFixed(0)}%"></div></div>
+        </div>
+        <div class="daily-row-right">
+          <div class="daily-reward-main">+${ch.reward}◈</div>
+          <div class="daily-prog-main">${ch.completed ? '✅' : `${ch.progress||0}/${ch.target}`}</div>
+        </div>
+      </div>`;
+    }
+    panel.innerHTML = html;
+    panel.style.display = 'block';
+  });
+
   document.getElementById('btn-cosmetics')?.addEventListener('click', () => {
     SFX.play('click');
     const cosCoins = document.getElementById('cosmetics-coins');

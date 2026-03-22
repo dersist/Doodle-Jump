@@ -230,10 +230,17 @@ const Player = (() => {
 
         if (p.type === 'spring') {
           jv *= 1.6; SFX.play('spring'); player.squishY = 0.5; player.squishTimer = 8;
+          const bColS = (typeof Cosmetics !== 'undefined') ? Cosmetics.getBounceColor(Date.now()/16|0) : '#00ff88';
+          Particles.burst(player.x + player.w/2, player.y + player.h - GameState.cameraY, bColS, 10);
         } else if (p.type === 'boost') {
           jv *= 2.2; SFX.play('boost'); player.squishY = 0.4; player.squishTimer = 10;
+          const bColB = (typeof Cosmetics !== 'undefined') ? Cosmetics.getBounceColor(Date.now()/16|0) : '#ffee00';
+          Particles.burst(player.x + player.w/2, player.y + player.h - GameState.cameraY, bColB, 14);
         } else {
           player.squishY = 0.7; player.squishTimer = 5; SFX.play('jump');
+          // Bounce particle with cosmetic color
+          const bCol = (typeof Cosmetics !== 'undefined') ? Cosmetics.getBounceColor(Date.now()/16|0) : '#00f5ff';
+          Particles.burst(player.x + player.w/2, player.y + player.h - GameState.cameraY, bCol, 6);
         }
 
         player.vy = jv;
@@ -537,19 +544,29 @@ const Player = (() => {
     ctx.scale(1 / sy, sy);
     ctx.translate(-cx, -cy);
 
-    // Trail
-    if (GameState.overdriveTimer > 0 || player.rocketActive) {
-      for (let i = 0; i < player.trail.length; i++) {
-        const t = player.trail[i];
-        const alpha = (1 - i / player.trail.length) * 0.3;
-        ctx.globalAlpha = alpha;
-        const trailCol = (typeof Cosmetics !== 'undefined' && !player.rocketActive) ? (Cosmetics.getTrailColor(Date.now()/16|0) || '#ffee00') : (player.rocketActive ? '#ff6600' : '#ffee00');
-        ctx.fillStyle = trailCol;
-        ctx.beginPath();
-        ctx.arc(t.x, t.y - cameraY, (player.w / 2) * (1 - i / player.trail.length), 0, Math.PI * 2);
-        ctx.fill();
+    // Trail — drawn in screen space (no squish transform applied)
+    {
+      const cosTrail = (typeof Cosmetics !== 'undefined') ? Cosmetics.getTrailColor(Date.now()/16|0) : null;
+      const hasCosmTrail = cosTrail !== null;
+      const showTrail = hasCosmTrail || GameState.overdriveTimer > 0 || player.rocketActive;
+      if (showTrail && player.trail.length > 1) {
+        for (let i = 1; i < player.trail.length; i++) {
+          const t = player.trail[i];
+          // t is world-space; convert to screen
+          const sx = t.x;
+          const sy = t.y - cameraY;
+          const alpha = (1 - i / player.trail.length) * 0.55;
+          const radius = Math.max(1, (player.w / 2 - 2) * (1 - i / player.trail.length));
+          ctx.globalAlpha = alpha;
+          if (player.rocketActive) ctx.fillStyle = '#ff6600';
+          else if (hasCosmTrail) ctx.fillStyle = cosTrail;
+          else ctx.fillStyle = '#ffee00';
+          ctx.beginPath();
+          ctx.arc(sx, sy, radius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
       }
-      ctx.globalAlpha = 1;
     }
 
     // Body glow (overdrive)
