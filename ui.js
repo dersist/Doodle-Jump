@@ -723,11 +723,10 @@ const UI = (() => {
         if (d === 'hard') {
           hardClickCount++;
           if (hardClickCount >= INSANE_UNLOCK_CLICKS) {
-            const insaneBtn = document.getElementById('diff-insane');
-            if (insaneBtn) { insaneBtn.style.display = ''; insaneBtn.classList.add('insane-revealed'); }
             GameState.settings.insaneUnlocked = true;
             Save.save();
             showToast('🔥 INSANE MODE UNLOCKED!', 2500);
+            setTimeout(() => showScreen('settings-screen'), 400);
             hardClickCount = 0;
           } else if (hardClickCount >= 5) {
             showToast(`🔒 ${INSANE_UNLOCK_CLICKS - hardClickCount} more clicks to unlock INSANE...`, 1200);
@@ -736,11 +735,11 @@ const UI = (() => {
         if (d === 'insane') {
           insaneClickCount++;
           if (insaneClickCount >= NIGHTMARE_UNLOCK_CLICKS) {
-            const nmBtn = document.getElementById('diff-nightmare');
-            if (nmBtn) { nmBtn.style.display = ''; nmBtn.classList.add('nightmare-revealed'); }
             GameState.settings.nightmareUnlocked = true;
+            GameState.settings.insaneUnlocked = true;
             Save.save();
             showToast('💀 NIGHTMARE MODE UNLOCKED. GOD HELP YOU.', 3000);
+            setTimeout(() => showScreen('settings-screen'), 400);
             insaneClickCount = 0;
           } else if (insaneClickCount >= 5) {
             showToast(`😈 ${NIGHTMARE_UNLOCK_CLICKS - insaneClickCount} more clicks to unlock NIGHTMARE...`, 1200);
@@ -750,14 +749,34 @@ const UI = (() => {
       });
     });
 
-    // Restore hidden buttons if already unlocked
-    if (GameState.settings.insaneUnlocked || GameState.settings.difficulty === 'insane' || GameState.settings.difficulty === 'nightmare') {
+    // refreshDiffButtons: shows/hides secret difficulty buttons based on unlock state
+    // Called on init AND every time settings screen opens
+    function refreshDiffButtons() {
+      const s = GameState.settings || {};
+      const insaneUnlocked = s.insaneUnlocked || s.difficulty === 'insane' || s.difficulty === 'nightmare';
+      const nightmareUnlocked = s.nightmareUnlocked || s.difficulty === 'nightmare';
+
       const insaneBtn = document.getElementById('diff-insane');
-      if (insaneBtn) insaneBtn.style.display = '';
-    }
-    if (GameState.settings.nightmareUnlocked || GameState.settings.difficulty === 'nightmare') {
+      if (insaneBtn) insaneBtn.style.display = insaneUnlocked ? '' : 'none';
+
       const nmBtn = document.getElementById('diff-nightmare');
-      if (nmBtn) nmBtn.style.display = '';
+      if (nmBtn) nmBtn.style.display = nightmareUnlocked ? '' : 'none';
+
+      // Re-mark active button
+      diffs.forEach(x => {
+        const b = document.getElementById('diff-' + x);
+        if (b) b.classList.toggle('active', s.difficulty === x);
+      });
+    }
+    refreshDiffButtons();
+
+    // Re-run refresh every time settings screen becomes active
+    const settingsScreen = document.getElementById('settings-screen');
+    if (settingsScreen) {
+      const obs = new MutationObserver(() => {
+        if (settingsScreen.classList.contains('active')) refreshDiffButtons();
+      });
+      obs.observe(settingsScreen, { attributes: true, attributeFilter: ['class'] });
     }
 
     const toggleSfx       = document.getElementById('toggle-sfx');

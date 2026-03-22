@@ -889,20 +889,20 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 
   wireAdminBtn('adm-unlock-insane', () => {
-    GameState.settings.insaneUnlocked = true; Save.save();
-    const btn = document.getElementById('diff-insane');
-    if (btn) { btn.style.display = ''; btn.classList.add('insane-revealed'); }
-    adminLog('INSANE mode unlocked');
+    GameState.settings.insaneUnlocked = true;
+    Save.save();
+    document.getElementById('admin-panel').style.display = 'none';
+    UI.showScreen('settings-screen');
+    adminLog('INSANE mode unlocked — check Settings!');
   });
 
   wireAdminBtn('adm-unlock-nightmare', () => {
     GameState.settings.insaneUnlocked = true;
-    GameState.settings.nightmareUnlocked = true; Save.save();
-    ['diff-insane','diff-nightmare'].forEach(id => {
-      const btn = document.getElementById(id);
-      if (btn) { btn.style.display = ''; btn.classList.add('insane-revealed'); }
-    });
-    adminLog('NIGHTMARE mode unlocked');
+    GameState.settings.nightmareUnlocked = true;
+    Save.save();
+    document.getElementById('admin-panel').style.display = 'none';
+    UI.showScreen('settings-screen');
+    adminLog('NIGHTMARE mode unlocked — check Settings!');
   });
 
   wireAdminBtn('adm-reset-all', () => {
