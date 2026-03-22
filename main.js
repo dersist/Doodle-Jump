@@ -220,6 +220,7 @@ function getDiffConfig() {
     easy:   { platScale: 3.0, spawnMult: 0.5,  attackMult: 0.5,  aimMult: 0.4 },
     medium: { platScale: 2.0, spawnMult: 1.0,  attackMult: 1.0,  aimMult: 1.0 },
     hard:   { platScale: 1.0, spawnMult: 1.8,  attackMult: 1.4,  aimMult: 1.4 },
+    insane: { platScale: 0.6, spawnMult: 9.0,  attackMult: 7.0,  aimMult: 7.0 },
   }[d] || { platScale: 2.0, spawnMult: 1.0, attackMult: 1.0, aimMult: 1.0 };
 }
 let startCameraY = 0; // set in initRun so score is relative to start
@@ -800,4 +801,101 @@ window.addEventListener('DOMContentLoaded', () => {
   UI.updateMainMenuStats();
 
   SFX.setEnabled(GameState.settings.sfx);
+
+  // ── ADMIN PANEL (type "admin" to open) ───────────────────
+  const ADMIN_SEQ = 'admin';
+  let adminBuf = '';
+  document.addEventListener('keydown', (e) => {
+    if (['INPUT','TEXTAREA'].includes(document.activeElement?.tagName || '')) return;
+    adminBuf = (adminBuf + e.key.toLowerCase()).slice(-ADMIN_SEQ.length);
+    if (adminBuf === ADMIN_SEQ) {
+      adminBuf = '';
+      const panel = document.getElementById('admin-panel');
+      if (panel) panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
+    }
+  });
+
+  function adminLog(msg) {
+    const log = document.getElementById('admin-log');
+    if (!log) return;
+    const line = document.createElement('div');
+    line.textContent = '> ' + msg;
+    log.prepend(line);
+    while (log.children.length > 8) log.lastChild.remove();
+  }
+
+  function wireAdminBtn(id, fn) {
+    document.getElementById(id)?.addEventListener('click', fn);
+  }
+
+  wireAdminBtn('admin-close', () => { document.getElementById('admin-panel').style.display = 'none'; });
+  wireAdminBtn('adm-coins-100',  () => { GameState.totalCoins += 100;  Save.save(); UI.updateMainMenuStats(); adminLog('+100 coins'); });
+  wireAdminBtn('adm-coins-1000', () => { GameState.totalCoins += 1000; Save.save(); UI.updateMainMenuStats(); adminLog('+1000 coins'); });
+  wireAdminBtn('adm-coins-9999', () => { GameState.totalCoins += 9999; Save.save(); UI.updateMainMenuStats(); adminLog('+9999 coins'); });
+
+  wireAdminBtn('adm-lootbox-reset', () => {
+    try { localStorage.setItem('neon_lootbox_last', '0'); } catch(e) {}
+    LootBox.init();
+    adminLog('Lootbox cooldown reset');
+  });
+
+  wireAdminBtn('adm-lootbox-open', () => {
+    try { localStorage.setItem('neon_lootbox_last', '0'); } catch(e) {}
+    setTimeout(() => document.getElementById('lb-open-btn')?.click(), 50);
+    document.getElementById('admin-panel').style.display = 'none';
+    adminLog('Forced lootbox open');
+  });
+
+  wireAdminBtn('adm-unlock-abilities', () => {
+    const ids = ['rocket_surge','phase_dash','gravity_flip','energy_shield','pulse_slam',
+                 'drone','time_distort','platform_forge','chaos_engine','overdrive'];
+    ids.forEach(id => { if (!GameState.ownedAbilities[id]) GameState.ownedAbilities[id] = { upgrades: [] }; });
+    Save.save(); adminLog('All abilities unlocked');
+  });
+
+  wireAdminBtn('adm-max-upgrades', () => {
+    const upgradeMap = {
+      rocket_surge:['rs_1','rs_2','rs_3','rs_4','rs_5','rs_6','rs_7','rs_8','rs_9'],
+      phase_dash:['pd_1','pd_2','pd_3','pd_4','pd_5','pd_6','pd_7','pd_8','pd_9'],
+      gravity_flip:['gf_1','gf_2','gf_3','gf_4','gf_5','gf_6','gf_7','gf_8','gf_9'],
+      energy_shield:['es_1','es_2','es_3','es_4','es_5','es_6','es_7','es_8','es_9'],
+      pulse_slam:['ps_1','ps_2','ps_3','ps_4','ps_5','ps_6','ps_7','ps_8','ps_9'],
+      drone:['dr_1','dr_2','dr_3','dr_4','dr_5','dr_6','dr_7','dr_8','dr_9'],
+      time_distort:['td_1','td_2','td_3','td_4','td_5','td_6','td_7','td_8','td_9'],
+      platform_forge:['pf_1','pf_2','pf_3','pf_4','pf_5','pf_6','pf_7','pf_8','pf_9'],
+      chaos_engine:['ce_1','ce_2','ce_3','ce_4','ce_5','ce_6','ce_7','ce_8','ce_9'],
+      overdrive:['od_1','od_2','od_3','od_4','od_5','od_6','od_7','od_8','od_9'],
+    };
+    Object.entries(upgradeMap).forEach(([id, upgs]) => {
+      if (!GameState.ownedAbilities[id]) GameState.ownedAbilities[id] = { upgrades: [] };
+      GameState.ownedAbilities[id].upgrades = [...upgs];
+    });
+    Save.save(); adminLog('All ability upgrades maxed');
+  });
+
+  wireAdminBtn('adm-unlock-guns', () => {
+    const gunIds = ['double_shot','rapid_fire','explosive_rounds','piercing_shot','triple_spread',
+                    'ricochet','heavy_caliber','poison_rounds','chain_lightning','mega_bullet'];
+    if (!GameState.gunUpgrades) GameState.gunUpgrades = {};
+    gunIds.forEach(id => { GameState.gunUpgrades[id] = { parts:[1,2,3,4,5], unlocked:true }; });
+    Save.save(); adminLog('All gun mods unlocked');
+  });
+
+  wireAdminBtn('adm-max-stats', () => {
+    if (!GameState.playerUpgradeLevels) GameState.playerUpgradeLevels = {};
+    ['health','score_mult','jump_mult','currency_boost'].forEach(id => { GameState.playerUpgradeLevels[id] = 5; });
+    Save.save(); adminLog('All stat upgrades maxed');
+  });
+
+  wireAdminBtn('adm-unlock-insane', () => {
+    GameState.settings.insaneUnlocked = true; Save.save();
+    const btn = document.getElementById('diff-insane');
+    if (btn) { btn.style.display = ''; btn.classList.add('insane-revealed'); }
+    adminLog('INSANE mode unlocked');
+  });
+
+  wireAdminBtn('adm-reset-all', () => {
+    if (confirm('Reset ALL progress?')) { Save.reset(); UI.updateMainMenuStats(); adminLog('All progress reset'); }
+  });
+
 });

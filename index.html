@@ -225,6 +225,7 @@
           <button class="diff-btn active" id="diff-easy"   data-diff="easy">EASY</button>
           <button class="diff-btn"        id="diff-medium" data-diff="medium">MEDIUM</button>
           <button class="diff-btn"        id="diff-hard"   data-diff="hard">HARD</button>
+          <button class="diff-btn diff-insane" id="diff-insane" data-diff="insane" style="display:none">☠ INSANE</button>
         </div>
       </div>
       <div class="setting-row">
@@ -296,6 +297,50 @@
         <div id="lb-reward-text" class="lb-reward-text"></div>
       </div>
       <button id="lb-close" class="btn-menu btn-secondary lb-close-btn">✕ COLLECT &amp; CLOSE</button>
+    </div>
+  </div>
+
+  <!-- ADMIN PANEL -->
+  <div id="admin-panel" style="display:none" class="admin-overlay">
+    <div class="admin-modal">
+      <div class="admin-title">⚠ ADMIN PANEL ⚠</div>
+      <div class="admin-subtitle">FOR TESTING ONLY</div>
+      <div class="admin-grid">
+        <div class="admin-section">
+          <div class="admin-sec-title">CURRENCY</div>
+          <button class="admin-btn" id="adm-coins-100">+100 Coins</button>
+          <button class="admin-btn" id="adm-coins-1000">+1000 Coins</button>
+          <button class="admin-btn" id="adm-coins-9999">+9999 Coins</button>
+        </div>
+        <div class="admin-section">
+          <div class="admin-sec-title">LOOT BOX</div>
+          <button class="admin-btn" id="adm-lootbox-reset">Reset Cooldown</button>
+          <button class="admin-btn" id="adm-lootbox-open">Force Open</button>
+        </div>
+        <div class="admin-section">
+          <div class="admin-sec-title">ABILITIES</div>
+          <button class="admin-btn" id="adm-unlock-abilities">Unlock All</button>
+          <button class="admin-btn" id="adm-max-upgrades">Max All Upgrades</button>
+        </div>
+        <div class="admin-section">
+          <div class="admin-sec-title">GUN MODS</div>
+          <button class="admin-btn" id="adm-unlock-guns">Unlock All Guns</button>
+        </div>
+        <div class="admin-section">
+          <div class="admin-sec-title">STAT UPGRADES</div>
+          <button class="admin-btn" id="adm-max-stats">Max All Stats</button>
+        </div>
+        <div class="admin-section">
+          <div class="admin-sec-title">DIFFICULTY</div>
+          <button class="admin-btn" id="adm-unlock-insane">Unlock INSANE</button>
+        </div>
+        <div class="admin-section">
+          <div class="admin-sec-title">GAME STATE</div>
+          <button class="admin-btn adm-danger" id="adm-reset-all">Reset Everything</button>
+        </div>
+      </div>
+      <div id="admin-log" class="admin-log"></div>
+      <button class="admin-close" id="admin-close">✕ CLOSE</button>
     </div>
   </div>
 

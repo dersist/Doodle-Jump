@@ -529,7 +529,7 @@ const UI = (() => {
     const subtotal     = heightCoins + enemyCoins + bounceCoins + bossCoins + collected;
 
     // Difficulty coin multiplier: Easy 1x, Medium 1.2x, Hard 2x
-    const diffMults = { easy: 1.0, medium: 1.2, hard: 2.0 };
+    const diffMults = { easy: 1.0, medium: 1.2, hard: 2.0, insane: 5.0 };
     const diff = (GameState.settings && GameState.settings.difficulty) || 'medium';
     const diffMult = diffMults[diff] || 1.0;
     const total = Math.floor(subtotal * diffMult);
@@ -701,18 +701,47 @@ const UI = (() => {
     if (backBtn) backBtn.addEventListener('click', () => showScreen('main-menu'));
 
     // Difficulty buttons
-    const diffs = ['easy','medium','hard'];
+    const diffs = ['easy','medium','hard','insane'];
+    let hardClickCount = 0;
+    const INSANE_UNLOCK_CLICKS = 10;
+
+    function setActiveDiff(d) {
+      diffs.forEach(x => document.getElementById('diff-' + x)?.classList.remove('active'));
+      document.getElementById('diff-' + d)?.classList.add('active');
+      GameState.settings.difficulty = d;
+      Save.save();
+    }
+
     diffs.forEach(d => {
       const btn = document.getElementById('diff-' + d);
       if (!btn) return;
       if (GameState.settings.difficulty === d) btn.classList.add('active');
+
       btn.addEventListener('click', () => {
-        diffs.forEach(x => document.getElementById('diff-' + x)?.classList.remove('active'));
-        btn.classList.add('active');
-        GameState.settings.difficulty = d;
-        Save.save();
+        if (d === 'hard') {
+          hardClickCount++;
+          if (hardClickCount >= INSANE_UNLOCK_CLICKS) {
+            // Unlock insane
+            const insaneBtn = document.getElementById('diff-insane');
+            if (insaneBtn) {
+              insaneBtn.style.display = '';
+              insaneBtn.classList.add('insane-revealed');
+            }
+            showToast('🔥 INSANE MODE UNLOCKED!', 2500);
+            hardClickCount = 0;
+          } else if (hardClickCount >= 5) {
+            showToast(`🔒 ${INSANE_UNLOCK_CLICKS - hardClickCount} more clicks to unlock INSANE...`, 1200);
+          }
+        }
+        setActiveDiff(d);
       });
     });
+
+    // Show insane button if already unlocked
+    if (GameState.settings.insaneUnlocked) {
+      const insaneBtn = document.getElementById('diff-insane');
+      if (insaneBtn) insaneBtn.style.display = '';
+    }
 
     const toggleSfx       = document.getElementById('toggle-sfx');
     const toggleShake     = document.getElementById('toggle-shake');
