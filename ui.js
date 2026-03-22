@@ -542,12 +542,14 @@ const UI = (() => {
     const bossCoins    = (stats.bossesKilled   || 0) * 50;
     const collected    = stats.coinsCollected  || 0;
     const subtotal     = heightCoins + enemyCoins + bounceCoins + bossCoins + collected;
+    // Prestige p4: +10% coins per run (doubled by p10)
+    const runMult = (typeof Prestige !== 'undefined') ? Prestige.runCoinBonus() : 1;
 
     // Difficulty coin multiplier: Easy 1x, Medium 1.2x, Hard 2x
     const diffMults = { easy: 1.0, medium: 1.2, hard: 2.0, insane: 5.0, nightmare: 10.0 };
     const diff = (GameState.settings && GameState.settings.difficulty) || 'medium';
     const diffMult = diffMults[diff] || 1.0;
-    const total = Math.floor(subtotal * diffMult);
+    const total = Math.floor(subtotal * diffMult * runMult);
 
     // Award total to player's persistent coins
     GameState.totalCoins += total;
@@ -924,7 +926,10 @@ const LootBox = (() => {
 
   function getLastOpen()  { try { return parseInt(localStorage.getItem(LS_KEY)||'0'); } catch(e){return 0;} }
   function setLastOpen()  { try { localStorage.setItem(LS_KEY, Date.now().toString()); } catch(e){} }
-  function getMsRemain()  { return Math.max(0, COOLDOWN_MS - (Date.now() - getLastOpen())); }
+  function getMsRemain()  {
+    const bonus = (typeof Prestige !== 'undefined') ? Prestige.lootboxBonus() : 0;
+    return Math.max(0, (COOLDOWN_MS - bonus) - (Date.now() - getLastOpen()));
+  }
 
   function roll() {
     // Filter out already-owned abilities

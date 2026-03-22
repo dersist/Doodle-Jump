@@ -242,6 +242,17 @@ const Abilities = (() => {
       }
     }
 
+    // Mastery flip star 3: stun enemies 0.5s on flip
+    if (typeof Mastery !== 'undefined' && Mastery.hasStar('gravity_flip', 3)) {
+      for (const e of Enemies.getAll()) {
+        if (!e.dead) { e._stunTimer = 30; } // 30 frames = 0.5s
+      }
+      UI.showToast('😵 Enemies stunned!', 800);
+    }
+    // Mastery flip star 5: +50% flip duration
+    if (typeof Mastery !== 'undefined' && Mastery.hasStar('gravity_flip', 5)) {
+      state['gravity_flip'].duration *= 1.5;
+    }
     Particles.burst(GameState.player.x + GameState.player.w/2,
                     GameState.player.y + GameState.player.h/2 - GameState.cameraY,
                     '#00f5ff', 24);
@@ -269,6 +280,14 @@ const Abilities = (() => {
     player.slamming = true;
     player.vy = 22 * AbilityUpgrades.getSlamSpeedMult();
     // ps_8: pull enemies into slam zone
+    // Mastery slam star 3: pull nearby coins
+    if (typeof Mastery !== 'undefined' && Mastery.hasStar('pulse_slam', 3)) {
+      if (typeof Coins !== 'undefined') Coins.pullNearby(player.x + player.w/2, player.y + player.h/2, 200);
+    }
+    // Mastery slam star 5: 3 shockwave pulses on landing (stored for handleSlamLanding)
+    if (typeof Mastery !== 'undefined' && Mastery.hasStar('pulse_slam', 5)) {
+      player._masterySlam5 = true;
+    }
     if (AbilityUpgrades.slamPullsEnemies()) {
       for (const e of Enemies.getAll()) {
         if (e.dead) continue;
@@ -297,6 +316,7 @@ const Abilities = (() => {
     }
     state['drone'].active = true;
     state['drone'].duration = BASE_DURATIONS.drone + (typeof Mastery!=='undefined'?Mastery.droneDurBonus():0);
+    if (typeof Mastery !== 'undefined') state['drone']._masteryStars = Mastery.getStars('drone');
   }
 
   // ── TIME DISTORT ──────────────────────────────────────────
@@ -305,7 +325,10 @@ const Abilities = (() => {
     const factor = AbilityUpgrades.getSlowFactor();
     GameState.timeSlowTimer = dur;
     GameState.timeSlowFactor = factor;
-    GameState.timeSlowPlayerUnaffected = AbilityUpgrades.slowPlayerUnaffected();
+    GameState.timeSlowPlayerUnaffected = AbilityUpgrades.slowPlayerUnaffected()
+      || (typeof Mastery !== 'undefined' && Mastery.hasStar('time_distort', 5));
+    GameState.tdPlayerSpeedBoost = (typeof Mastery !== 'undefined' && Mastery.hasStar('time_distort', 5)) ? 1.5 : 1.0;
+    GameState.tdFreezeBullets = typeof Mastery !== 'undefined' && Mastery.hasStar('time_distort', 3);
     state['time_distort'].active = true;
     state['time_distort'].duration = dur;
     Particles.ring(GameState.player.x + GameState.player.w/2,
@@ -317,7 +340,7 @@ const Abilities = (() => {
   // ── PLATFORM FORGE ────────────────────────────────────────
   function doPlatformForge() {
     const player = GameState.player;
-    const count = AbilityUpgrades.getForgeCount();
+    const count = Math.max(AbilityUpgrades.getForgeCount(), (typeof Mastery !== 'undefined' && Mastery.hasStar('platform_forge', 5)) ? 2 : 1);
     const w = AbilityUpgrades.getForgeWidth(70);
     const type = AbilityUpgrades.forgeIsBoost() ? 'boost' : 'normal';
     const life = AbilityUpgrades.getForgeDuration(180) * (typeof Mastery!=='undefined'?Mastery.forgeDurBonus():1);
@@ -367,8 +390,8 @@ const Abilities = (() => {
   // ── CHAOS ENGINE ──────────────────────────────────────────
   function doChaosEngine() {
     const effects = buildChaosPool();
-    let count = 1;
-    if (AbilityUpgrades.chaosChains()) count = 2;
+    let count = (typeof Mastery !== 'undefined' && Mastery.hasStar('chaos_engine', 5)) ? 2 : 1;
+    if (AbilityUpgrades.chaosChains()) count = Math.max(count, 2);
     if (AbilityUpgrades.chaosDoubles()) count = Math.max(count, 2);
 
     const chosen = [];
@@ -551,6 +574,16 @@ const Abilities = (() => {
       }
     }
 
+    // Drone mastery star 3: redeploy timer
+    if (state['drone'] && state['drone']._redeployTimer > 0) {
+      state['drone']._redeployTimer -= dt;
+      if (state['drone']._redeployTimer <= 0) {
+        state['drone']._redeployTimer = 0;
+        doDrone(); // auto-redeploy
+        UI.showToast('🤖 Drone redeployed!', 1000);
+      }
+    }
+
     // Phase enemy-phasing timer
     const player = GameState.player;
     if (player && player.dashPhasing && player.dashPhaseTimer > 0) {
@@ -630,6 +663,17 @@ const Abilities = (() => {
         break;
       case 'drone':
         GameState.drones = [];
+        // Mastery drone star 3: auto-redeploy after 30s
+        if (typeof Mastery !== 'undefined' && Mastery.hasStar('drone', 3)) {
+          state['drone']._redeployTimer = 1800; // 30 seconds
+        }
+        // Mastery drone star 5: always have 1 mini passive drone
+        if (typeof Mastery !== 'undefined' && Mastery.hasStar('drone', 5) && (!GameState.passiveDrone)) {
+          GameState.passiveDrone = {
+            x: GameState.player.x, y: GameState.player.y,
+            angle: 0, shootTimer: 0, orbitRadius: 60, elite: false, _passive: true,
+          };
+        }
         break;
       case 'time_distort':
         if (AbilityUpgrades.slowFreezesAtEnd()) GameState.freezeTimer = 90;

@@ -20,9 +20,7 @@ const Player = (() => {
       jumpVelocityMult: 1,
       gravity: Physics.BASE_GRAVITY,
       gravityMult: 1,
-      moveSpeed: Physics.BASE_MOVE_SPEED
-        * (typeof Mastery  !== 'undefined' ? Mastery.dashSpeedBonus()  : 1)
-        * (typeof Prestige !== 'undefined' ? Prestige.bulletBonus()    : 1), // p7 also slightly boosts speed
+      moveSpeed: Physics.BASE_MOVE_SPEED * (typeof Mastery !== 'undefined' ? Mastery.dashSpeedBonus() : 1),
       moveSpeedMult: 1,
       airControl: Physics.BASE_AIR_CTRL,
       maxFallSpeed: Physics.BASE_MAX_FALL,
@@ -70,8 +68,8 @@ const Player = (() => {
 
     // Apply health system if purchased
     if (PlayerUpgrades.hasHealthSystem()) {
-      p.maxHealth = PlayerUpgrades.getMaxHealth();
-      p.health = p.maxHealth;
+      p.maxHealth = PlayerUpgrades.getMaxHealth() + (typeof Prestige !== 'undefined' ? Prestige.hpBonus() : 0);
+      p.health = p.maxHealth; // includes prestige p5 bonus
     }
 
     return p;
@@ -162,13 +160,17 @@ const Player = (() => {
     Physics.wrapX(player, canvasW);
 
     // ── ENEMY CONTACT DAMAGE ──
-    if (!player.invincible && !player.shielded) {
-      for (const e of Enemies.getAll()) {
-        if (e.dead) continue;
-        if (Physics.playerEnemyCollision(player, e)) {
-          takeDamage(e.scale ? e.scale.damage : 1);
-          break;
+    for (const e of Enemies.getAll()) {
+      if (e.dead) continue;
+      if (!Physics.playerEnemyCollision(player, e)) continue;
+      if (player.dashPhasing) {
+        // Mastery dash star 3: deal 1 damage while phasing
+        if (typeof Mastery !== 'undefined' && Mastery.hasStar('phase_dash', 3)) {
+          Enemies.hitEnemy(e, 1);
         }
+      } else if (!player.invincible && !player.shielded) {
+        takeDamage(e.scale ? e.scale.damage : 1);
+        break;
       }
     }
 
@@ -248,23 +250,57 @@ const Player = (() => {
         }
 
         player.vy = jv;
+        player._autoRocketUsed = false; player._peakY = player.y; // reset auto-rocket
         player.slamming = false;
         player.slamLanded = false;
         player.rocketActive = false;
-        if (typeof RunStats !== 'undefined') RunStats.platformsBounced++;
+        if (typeof RunStats !== 'undefined') {
+          RunStats.platformsBounced++;
+          // Prestige p8: every 50th bounce = +1 coin
+          if (typeof Prestige !== 'undefined' && Prestige.bountyBonus() && RunStats.platformsBounced % 50 === 0) {
+            GameState.totalCoins++;
+            GameState.coins++;
+            Particles.coins(player.x + player.w/2, player.y + player.h - GameState.cameraY, 1);
+          }
+          // Mastery Overdrive star 3: +1 coin per bounce during overdrive
+          if (typeof Mastery !== 'undefined' && Mastery.hasStar('overdrive', 3) && GameState.overdriveTimer > 0) {
+            GameState.totalCoins++;
+            GameState.coins++;
+          }
+        }
         if (typeof Combo !== 'undefined') Combo.onLand(p);
 
         if (wasSlamming) { handleSlamLanding(player, p); }
+        // Rocket mastery star 3: landing emits 1-dmg shockwave
+        if (typeof Mastery !== 'undefined' && Mastery.hasStar('rocket_surge', 3)) {
+          for (const e of Enemies.getAll()) {
+            if (e.dead) continue;
+            const ed = Math.hypot(e.x - player.x, e.y - player.y);
+            if (ed < 80) Enemies.hitEnemy(e, 1);
+          }
+          Particles.shockwave(player.x + player.w/2, player.y + player.h - GameState.cameraY, '#ff6600', 80);
+        }
 
         if (p.type === 'coin_plat' && !p.coinCollected) {
           p.coinCollected = true;
           const amount = Math.ceil(3 * PlayerUpgrades.getCurrencyBoost());
+          // Mastery shield star 4: coins restore shield hits
+          if (typeof Mastery !== 'undefined' && Mastery.hasStar('energy_shield', 4) && player.shielded && player.shieldHits < AbilityUpgrades.getShieldHits()) {
+            player.shieldHits = Math.min(player.shieldHits + 1, AbilityUpgrades.getShieldHits());
+          }
           GameState.coins += amount;
           GameState.totalCoins += amount;
           Particles.coins(p.x + p.w/2, p.y - GameState.cameraY, amount);
         }
 
         if (p.cracking && !p.crackDelay) { p.crackDelay = 20; }
+
+        // Mastery forge star 3: +2 coins per bounce on forged platform
+        if (p.forged && typeof Mastery !== 'undefined' && Mastery.hasStar('platform_forge', 3)) {
+          GameState.totalCoins += 2;
+          GameState.coins += 2;
+          Particles.coins(player.x + player.w/2, player.y + player.h - GameState.cameraY, 2);
+        }
 
         break;
       }
@@ -376,6 +412,17 @@ const Player = (() => {
     }
 
     // ── TRAIL ──
+    // Mastery rocket star 5: track peak Y and auto-rocket if falls too far
+    if (typeof Mastery !== 'undefined' && Mastery.hasStar('rocket_surge', 5)) {
+      if (!player._peakY) player._peakY = player.y;
+      if (player.y < player._peakY) player._peakY = player.y;
+      if (!player._autoRocketUsed && player.y > player._peakY + 200 && player.vy > 0) {
+        player.vy = Physics.BASE_JUMP;
+        player._autoRocketUsed = true;
+        Particles.burst(player.x + player.w/2, player.y + player.h - GameState.cameraY, '#ff6600', 10);
+        UI.showToast('🚀 Auto-Rocket!', 800);
+      }
+    }
     player.trail.unshift({ x: player.x + player.w/2, y: player.y + player.h/2 });
     if (player.trail.length > 8) player.trail.pop();
 
@@ -391,7 +438,9 @@ const Player = (() => {
     const radius = AbilityUpgrades.getSlamRadius(80);
     const pulses = AbilityUpgrades.slamPulseCount();
 
-    for (let i = 0; i < pulses; i++) {
+    const totalPulses = pulses + (player._masterySlam5 ? 2 : 0);
+    player._masterySlam5 = false;
+    for (let i = 0; i < totalPulses; i++) {
       Particles.shockwave(
         player.x + player.w/2,
         player.y + player.h - GameState.cameraY,
@@ -509,6 +558,19 @@ const Player = (() => {
       player.health -= reducedDmg;
       UI.updateHealthBar(player.health, player.maxHealth);
       if (player.health <= 0) {
+        // Mastery shield star 5: auto-shield at 1 HP, once per run
+        if (typeof Mastery !== 'undefined' && Mastery.hasStar('energy_shield', 5) && !player._autoShieldUsed) {
+          player._autoShieldUsed = true;
+          player.health = 1;
+          player.shielded = true;
+          player.shieldHits = 2;
+          player.shieldTimer = 180;
+          player.invincible = true;
+          player.invincibleTimer = 120;
+          UI.showToast('🛡 Auto-Shield!', 1500);
+          SFX.play('shield_hit');
+          return;
+        }
         if (PlayerUpgrades.hasRevive() && !player.reviveUsed) {
           player.reviveUsed = true;
           player.health = Math.ceil(player.maxHealth / 2);

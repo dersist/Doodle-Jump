@@ -141,6 +141,9 @@ const Enemies = (() => {
       e.x = e.sx;
       e.y = cameraY + e.sy;
 
+      // Mastery flip star 3 stun
+      if (e._stunTimer > 0) { e._stunTimer -= dt; continue; }
+
       const ex = e.sx + e.w / 2;   // screen-space enemy center
       const ey = e.sy + e.h / 2;
       const dx = spx - ex;
@@ -460,6 +463,15 @@ const Enemies = (() => {
     SFX.play('enemy_die');
     Particles.burst(enemy.sx + enemy.w/2, enemy.sy + enemy.h/2, COLORS[enemy.type]?.glow || '#fff', 12);
     if (typeof RunStats !== 'undefined') RunStats.enemiesKilled++;
+    // Prestige p2: +1 coin per kill (doubled by p10)
+    if (typeof Prestige !== 'undefined') {
+      const extraCoins = Prestige.enemyCoinBonus();
+      if (extraCoins > 0) {
+        GameState.totalCoins += extraCoins;
+        GameState.coins += extraCoins;
+        if (typeof RunStats !== 'undefined') RunStats.coinsCollected += extraCoins;
+      }
+    }
   }
 
   function getAll() { return enemies; }

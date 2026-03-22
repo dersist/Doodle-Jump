@@ -508,6 +508,10 @@ function gameLoop(timestamp) {
     dt = 0.02; // near-frozen
   } else if (GameState.timeSlowTimer > 0) {
     dt = rawDt * GameState.timeSlowFactor;
+    // TD mastery star 5: player's own speed is boosted (handled via moveSpeedMult in update)
+    if (GameState.tdPlayerSpeedBoost && GameState.tdPlayerSpeedBoost > 1) {
+      if (GameState.player) GameState.player.moveSpeedMult = Math.max(GameState.player.moveSpeedMult, GameState.tdPlayerSpeedBoost);
+    }
     GameState.timeSlowTimer -= rawDt; // decrement by real time, not slowed time
     if (GameState.timeSlowTimer <= 0) {
       GameState.timeSlowTimer = 0;

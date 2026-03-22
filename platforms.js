@@ -11,7 +11,8 @@ const Platforms = (() => {
     const cfg = (typeof getDiffConfig === 'function') ? getDiffConfig() : { platScale: 2.0 };
     const base = cfg.platScale; // 3 easy, 2 medium, 1 hard
     // Scale down from base to 1.0 over 100k score
-    return Math.max(1.0, base - ((base - 1.0) * Math.min(score, 100000) / 100000));
+    const prestigeBonus = (typeof Prestige !== 'undefined') ? Prestige.platScaleBonus() : 1;
+    return Math.max(1.0, base - ((base - 1.0) * Math.min(score, 100000) / 100000)) * prestigeBonus;
   }
 
   // Platform types
