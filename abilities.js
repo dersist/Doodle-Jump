@@ -77,11 +77,11 @@ const Abilities = (() => {
     // Record mastery use
     if (typeof Mastery !== 'undefined') Mastery.recordUse(abilityId);
 
-    const cdr = 1 - PlayerUpgrades.getCooldownReduction();
+    const cdr = 1 - PlayerUpgrades.getCooldownReduction() - (typeof Prestige!=='undefined'?Prestige.cooldownBonus():0);
     let cd = BASE_COOLDOWNS[abilityId] * cdr;
-    if (abilityId === 'gravity_flip') cd *= AbilityUpgrades.getFlipCooldownMult();
+    if (abilityId === 'gravity_flip') cd *= AbilityUpgrades.getFlipCooldownMult() * (1 - (typeof Mastery!=='undefined'?Mastery.flipCDRBonus():0));
     if (abilityId === 'time_distort') cd *= AbilityUpgrades.getSlowCooldownMult();
-    if (abilityId === 'overdrive')    cd *= AbilityUpgrades.getOverdriveCooldownMult();
+    if (abilityId === 'overdrive')    cd *= AbilityUpgrades.getOverdriveCooldownMult() * (typeof Mastery!=='undefined'?Mastery.overdriveCD():1);
 
     s.cooldown = Math.max(30, cd);
     SFX.play('ability_use');
@@ -252,7 +252,7 @@ const Abilities = (() => {
   // NERFED: base = 1 hit, 90 frames. Upgrades add hits and duration.
   function doEnergyShield() {
     const player = GameState.player;
-    const dur = AbilityUpgrades.getShieldDuration(90); // BASE 90 frames (1.5s), not 200
+    const dur = AbilityUpgrades.getShieldDuration(90) + (typeof Mastery!=='undefined'?Mastery.shieldDurBonus():0); // mastery adds frames
     player.shielded = true;
     player.shieldHits = AbilityUpgrades.getShieldHits(); // 1 base, up to 3 with upgrades
     player.shieldTimer = dur;
@@ -296,7 +296,7 @@ const Abilities = (() => {
       });
     }
     state['drone'].active = true;
-    state['drone'].duration = BASE_DURATIONS.drone;
+    state['drone'].duration = BASE_DURATIONS.drone + (typeof Mastery!=='undefined'?Mastery.droneDurBonus():0);
   }
 
   // ── TIME DISTORT ──────────────────────────────────────────
@@ -320,7 +320,7 @@ const Abilities = (() => {
     const count = AbilityUpgrades.getForgeCount();
     const w = AbilityUpgrades.getForgeWidth(70);
     const type = AbilityUpgrades.forgeIsBoost() ? 'boost' : 'normal';
-    const life = AbilityUpgrades.getForgeDuration(180);
+    const life = AbilityUpgrades.getForgeDuration(180) * (typeof Mastery!=='undefined'?Mastery.forgeDurBonus():1);
 
     if (AbilityUpgrades.forgeAutoPlaces()) {
       // pf_7: place platforms under player's current trajectory
@@ -392,8 +392,12 @@ const Abilities = (() => {
     if (AbilityUpgrades.chaosNoNegatives() || AbilityUpgrades.chaosAlwaysPositive()) negative = [];
 
     if (AbilityUpgrades.chaosAlwaysPositive()) return positive;
-    if (AbilityUpgrades.chaosPositiveBias()) return [...positive, ...positive, ...positive, ...negative];
-    return [...positive, ...positive, ...negative];
+    // Mastery adds extra positive entries (up to +20% more positive at 4★)
+    const masteryBias = typeof Mastery !== 'undefined' ? Mastery.chaosPositiveBonus() : 0;
+    const extraPos = Math.round(masteryBias * positive.length);
+    const bonusPositive = positive.slice(0, extraPos);
+    if (AbilityUpgrades.chaosPositiveBias()) return [...positive, ...positive, ...positive, ...bonusPositive, ...negative];
+    return [...positive, ...positive, ...bonusPositive, ...negative];    return [...positive, ...positive, ...negative];
   }
 
   function applyChaosEffect(effect) {
@@ -471,7 +475,7 @@ const Abilities = (() => {
 
   // ── OVERDRIVE — nerfed to ~30% of previous power ─────────
   function doOverdrive() {
-    const dur = AbilityUpgrades.getOverdriveDuration(BASE_DURATIONS.overdrive);
+    const dur = AbilityUpgrades.getOverdriveDuration(BASE_DURATIONS.overdrive) * (typeof Mastery!=='undefined'?Mastery.overdriveExtBonus():1);
     const mult = AbilityUpgrades.getOverdriveMult(); // 1.0 base, 1.5 with od_2
     GameState.overdriveTimer = dur;
     GameState.overdriveMult = mult;
@@ -577,7 +581,8 @@ const Abilities = (() => {
         drone.y = player.y + player.h/2 + Math.sin(drone.angle) * drone.orbitRadius - GameState.cameraY;
 
         if (AbilityUpgrades.droneShoots()) {
-          const interval = Math.round(90 / AbilityUpgrades.getDroneFireMult());
+          const droneFireM = AbilityUpgrades.getDroneFireMult() * (typeof Mastery!=='undefined'?Mastery.droneFireBonus():1);
+          const interval = Math.round(90 / droneFireM);
           drone.shootTimer += dt;
           if (drone.shootTimer >= interval) {
             drone.shootTimer = 0;

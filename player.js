@@ -6,7 +6,9 @@ const Player = (() => {
   const W = 32, H = 40;
 
   function create(canvasW, canvasH) {
-    const jumpBonus = PlayerUpgrades.getJumpBonus();
+    const jumpBonus = PlayerUpgrades.getJumpBonus()
+      * (typeof Mastery  !== 'undefined' ? Mastery.rocketJumpBonus()  : 1)
+      * (typeof Prestige !== 'undefined' ? Prestige.jumpBonus()       : 1);
     const p = {
       x: canvasW / 2 - W / 2,
       y: canvasH - 160,
@@ -18,7 +20,9 @@ const Player = (() => {
       jumpVelocityMult: 1,
       gravity: Physics.BASE_GRAVITY,
       gravityMult: 1,
-      moveSpeed: Physics.BASE_MOVE_SPEED,
+      moveSpeed: Physics.BASE_MOVE_SPEED
+        * (typeof Mastery  !== 'undefined' ? Mastery.dashSpeedBonus()  : 1)
+        * (typeof Prestige !== 'undefined' ? Prestige.bulletBonus()    : 1), // p7 also slightly boosts speed
       moveSpeedMult: 1,
       airControl: Physics.BASE_AIR_CTRL,
       maxFallSpeed: Physics.BASE_MAX_FALL,
@@ -395,10 +399,12 @@ const Player = (() => {
       );
     }
 
-    if (AbilityUpgrades.slamDamagesEnemies()) {
+    if (AbilityUpgrades.slamDamagesEnemies() || (typeof Mastery !== 'undefined' && Mastery.slamDmgBonus() > 0)) {
+      const slamDmg = 2 + (typeof Mastery !== 'undefined' ? Mastery.slamDmgBonus() : 0);
+      const slamRad = radius * (typeof Mastery !== 'undefined' ? Mastery.slamRadBonus() : 1);
       for (const e of Enemies.getAll()) {
         const dist = Math.hypot(e.x - player.x, e.y - player.y);
-        if (dist < radius) Enemies.hitEnemy(e, 2);
+        if (dist < slamRad) Enemies.hitEnemy(e, slamDmg);
       }
     }
 
@@ -415,7 +421,9 @@ const Player = (() => {
     const baseDmg = player.bulletDamage
       * (GameState.overdriveTimer > 0 ? 1.5 : 1)
       * (AbilityUpgrades.slowBoostsDmg() && GameState.timeSlowTimer > 0 ? 1.5 : 1)
-      * GunUpgrades.getDamageMult();
+      * GunUpgrades.getDamageMult()
+      * (GameState.timeSlowTimer > 0 && typeof Mastery !== 'undefined' ? Mastery.tdDmgBonus() : 1)
+      * (typeof Prestige !== 'undefined' ? Prestige.bulletBonus() : 1);
 
     const baseSpd = (AbilityUpgrades.slowBoostsBullets() && GameState.timeSlowTimer > 0 ? 14 : 10)
       * GunUpgrades.getBulletSpeedMult();

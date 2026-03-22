@@ -1784,3 +1784,57 @@ html, body {
   cursor: pointer; border-radius: 3px;
   animation: ascendPulse 1.2s ease-in-out infinite alternate;
 }
+
+/* ══════════════════════ WARDROBE ASCENSION SECTION */
+.asc-ward-tracker {
+  background: rgba(100,0,200,0.07);
+  border: 1px solid rgba(150,50,255,0.25);
+  border-radius: 5px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-bottom: 8px;
+}
+.asc-ward-row { display: flex; justify-content: space-between; align-items: center; }
+.asc-ward-label { font-family: var(--font-mono); font-size: 10px; color: rgba(200,120,255,0.6); }
+.asc-ward-val   { font-family: var(--font-main); font-size: 12px; color: #cc88ff; font-weight: 700; }
+.asc-ward-bar   { height: 6px; background: rgba(150,50,255,0.12); border-radius: 3px; overflow: hidden; }
+.asc-ward-fill  { height: 100%; background: linear-gradient(90deg,#6600cc,#cc44ff); border-radius: 3px; transition: width 0.5s; box-shadow: 0 0 6px #9900ff; }
+.asc-ward-pct   { font-family: var(--font-mono); font-size: 9px; color: rgba(200,120,255,0.5); text-align: right; }
+.asc-ward-max   { font-family: var(--font-main); font-size: 12px; color: #cc44ff; text-align: center; text-shadow: 0 0 10px #9900ff; letter-spacing: 2px; }
+.asc-ward-reset-note { font-family: var(--font-mono); font-size: 9px; color: rgba(255,150,0,0.5); border-top: 1px solid rgba(255,150,0,0.1); padding-top: 6px; }
+.btn-ascend-ward {
+  font-family: var(--font-main); font-size: 11px; letter-spacing: 3px;
+  padding: 8px; background: rgba(200,100,255,0.15);
+  border: 1px solid #cc44ff; color: #cc44ff; cursor: pointer; border-radius: 3px;
+  width: 100%; animation: ascendPulse 1.2s ease-in-out infinite alternate;
+}
+.btn-ascend-ward:hover { background: rgba(200,100,255,0.3); }
+
+/* Ascension passives accordion */
+.asc-passives-acc { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+.ap-item { border: 1px solid rgba(150,50,255,0.15); border-radius: 4px; overflow: hidden; }
+.ap-item.ap-active { border-color: rgba(200,100,255,0.35); }
+.ap-item.ap-locked { opacity: 0.55; }
+.ap-item.open .ap-body { display: block !important; }
+.ap-item.open .ap-arrow { transform: rotate(180deg); }
+.ap-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 10px; cursor: pointer;
+  background: rgba(100,0,200,0.04); transition: background 0.15s;
+}
+.ap-header:hover { background: rgba(100,0,200,0.1); }
+.ap-left { display: flex; align-items: center; gap: 8px; }
+.ap-icon { font-size: 16px; }
+.ap-name { font-family: var(--font-main); font-size: 10px; letter-spacing: 1px; color: #cc88ff; }
+.ap-badge {
+  font-family: var(--font-mono); font-size: 8px; letter-spacing: 1.5px;
+  padding: 2px 6px; border-radius: 2px;
+  border: 1px solid #00ff88; color: #00ff88;
+}
+.ap-locked-badge { border-color: rgba(255,255,255,0.15); color: rgba(255,255,255,0.25); }
+.ap-arrow { font-size: 10px; color: rgba(200,100,255,0.5); transition: transform 0.2s; }
+.ap-body { display: none; padding: 8px 12px 10px; border-top: 1px solid rgba(150,50,255,0.1); background: rgba(0,0,0,0.2); }
+.ap-desc { font-family: var(--font-mono); font-size: 10px; color: var(--text-bright); margin-bottom: 4px; }
+.ap-unlock { font-family: var(--font-mono); font-size: 9px; color: rgba(200,120,255,0.5); }

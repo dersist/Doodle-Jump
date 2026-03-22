@@ -55,13 +55,34 @@ const Prestige = (() => {
     // Coin reward scales with ascension level
     const coinScale = [500, 1500, 3000, 5000, 8000, 12000, 20000, 35000, 60000, 100000];
     const bonus = coinScale[Math.min(newLevel - 1, coinScale.length - 1)];
-    GameState.totalCoins += bonus;
+
+    // ── ASCENSION RESET: wipe EVERYTHING except prestige + cosmetics + settings ──
+    const keepPrestige  = { ...GameState.prestige };     // keep ascension level/passives
+    const keepCosmetics = GameState.cosmetics ? { ...GameState.cosmetics } : null;
+    const keepSettings  = { ...GameState.settings };
+
+    GameState.totalCoins           = bonus; // start fresh with the ascension reward
+    GameState.bestScore            = 0;
+    GameState.totalRuns            = 0;
+    GameState.totalHeightJumped    = 0;
+    GameState.ownedAbilities       = {};
+    GameState.inventorySlots       = { 1: null, 2: null, 3: null };
+    GameState.playerUpgradeLevels  = {};
+    GameState.gunUpgrades          = {};
+    GameState.mastery              = {};       // mastery resets too — start fresh
+    GameState.milestonesReached    = 0;
+
+    // Restore keepers
+    GameState.prestige   = keepPrestige;
+    if (keepCosmetics) GameState.cosmetics = keepCosmetics;
+    GameState.settings   = keepSettings;
+
     Save.save();
+    if (typeof UI !== 'undefined') UI.updateMainMenuStats();
 
     UI.showToast(`✨ ASCENSION ${newLevel}! +${bonus}◈ — ${passive.icon} ${passive.name} unlocked!`, 4000);
     SFX.play('revive');
 
-    // Show ascension screen
     showAscensionModal(newLevel, passive, bonus);
     return true;
   }

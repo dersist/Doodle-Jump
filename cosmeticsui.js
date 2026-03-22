@@ -95,15 +95,56 @@ const CosmeticsUI = (() => {
     }
     html += '</div>';
 
-    // Prestige passives
-    html += '<div class="wardrobe-section-title">ASCENSION PASSIVES</div>';
-    html += '<div class="wardrobe-passives">';
+    // ── ASCENSION SECTION ──────────────────────────────────
+    html += '<div class="wardrobe-section-title">✨ ASCENSION</div>';
+
+    // Progress tracker
+    const aLvl    = Prestige.getLevel();
+    const aTotal  = GameState.totalHeightJumped || 0;
+    const aNeeded = Prestige.getNextHeight();
+    const aPct    = aLvl >= 10 ? 100 : Math.min(100, (aTotal / aNeeded) * 100);
+    const aCanAsc = Prestige.canAscend();
+
+    html += `<div class="asc-ward-tracker">
+      <div class="asc-ward-row">
+        <span class="asc-ward-label">Level</span>
+        <span class="asc-ward-val">${aLvl} / 10</span>
+      </div>
+      <div class="asc-ward-row">
+        <span class="asc-ward-label">Total Height</span>
+        <span class="asc-ward-val">${aTotal.toLocaleString()}</span>
+      </div>
+      ${aLvl < 10 ? `<div class="asc-ward-row">
+        <span class="asc-ward-label">Next Ascension</span>
+        <span class="asc-ward-val">${aNeeded.toLocaleString()}</span>
+      </div>
+      <div class="asc-ward-bar"><div class="asc-ward-fill" style="width:${aPct.toFixed(1)}%"></div></div>
+      <div class="asc-ward-pct">${aPct.toFixed(1)}% toward next ascension</div>` : '<div class="asc-ward-max">✨ MAX ASCENSION REACHED</div>'}
+      ${aCanAsc ? `<button class="btn-ascend-ward" onclick="if(typeof Prestige!=='undefined'){Prestige.ascend();setTimeout(()=>{if(typeof CosmeticsUI!=='undefined')CosmeticsUI.renderWardrobe();},500);}">✨ ASCEND NOW</button>` : ''}
+      <div class="asc-ward-reset-note">⚠ Ascending resets all progress except cosmetics, passives &amp; settings</div>
+    </div>`;
+
+    // Passives accordion
+    html += '<div class="wardrobe-section-title" style="margin-top:16px">ASCENSION PASSIVES</div>';
+    html += '<div class="asc-passives-acc">';
     const unlocked = Prestige.getUnlocked();
     const all = Prestige.getPassiveList();
     for (const p of all) {
       const active = unlocked.includes(p.id);
-      html += `<div class="passive-badge ${active?'active':'locked'}">
-        ${p.icon} <span>${p.name}</span>${active ? '' : ' 🔒'}
+      const accId = 'ap_' + p.id;
+      html += `<div class="ap-item ${active?'ap-active':'ap-locked'}" id="${accId}">
+        <div class="ap-header" onclick="document.getElementById('${accId}').classList.toggle('open')">
+          <div class="ap-left">
+            <span class="ap-icon">${p.icon}</span>
+            <span class="ap-name">${p.name}</span>
+            ${active ? '<span class="ap-badge">ACTIVE</span>' : '<span class="ap-badge ap-locked-badge">LOCKED</span>'}
+          </div>
+          <span class="ap-arrow">▾</span>
+        </div>
+        <div class="ap-body">
+          <div class="ap-desc">${p.desc}</div>
+          <div class="ap-unlock">${active ? '✅ Unlocked at Ascension Level ' + (all.indexOf(p)+1) : '🔒 Requires Ascension Level ' + (all.indexOf(p)+1)}</div>
+        </div>
       </div>`;
     }
     html += '</div>';
