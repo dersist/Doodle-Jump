@@ -221,6 +221,7 @@ function getDiffConfig() {
     medium: { platScale: 2.0, spawnMult: 1.0,  attackMult: 1.0,  aimMult: 1.0 },
     hard:   { platScale: 1.0, spawnMult: 1.8,  attackMult: 1.4,  aimMult: 1.4 },
     insane: { platScale: 0.6, spawnMult: 9.0,  attackMult: 7.0,  aimMult: 7.0 },
+    nightmare: { platScale: 0.3, spawnMult: 18.0, attackMult: 14.0, aimMult: 14.0 },
   }[d] || { platScale: 2.0, spawnMult: 1.0, attackMult: 1.0, aimMult: 1.0 };
 }
 let startCameraY = 0; // set in initRun so score is relative to start
@@ -892,6 +893,16 @@ window.addEventListener('DOMContentLoaded', () => {
     const btn = document.getElementById('diff-insane');
     if (btn) { btn.style.display = ''; btn.classList.add('insane-revealed'); }
     adminLog('INSANE mode unlocked');
+  });
+
+  wireAdminBtn('adm-unlock-nightmare', () => {
+    GameState.settings.insaneUnlocked = true;
+    GameState.settings.nightmareUnlocked = true; Save.save();
+    ['diff-insane','diff-nightmare'].forEach(id => {
+      const btn = document.getElementById(id);
+      if (btn) { btn.style.display = ''; btn.classList.add('insane-revealed'); }
+    });
+    adminLog('NIGHTMARE mode unlocked');
   });
 
   wireAdminBtn('adm-reset-all', () => {

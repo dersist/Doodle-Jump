@@ -1439,3 +1439,28 @@ html, body {
   color: #ff0080;
   background: rgba(255,0,128,0.08);
 }
+
+/* ══════════════════════ NIGHTMARE DIFFICULTY */
+.diff-nightmare {
+  border-color: rgba(80,0,80,0.6) !important;
+  color: #cc00cc !important;
+}
+.diff-nightmare.active {
+  background: rgba(80,0,80,0.2) !important;
+  border-color: #cc00cc !important;
+  color: #ff44ff !important;
+  text-shadow: 0 0 10px #ff44ff, 0 0 20px #cc00cc;
+  animation: nightmarePulse 0.5s ease-in-out infinite alternate;
+}
+.diff-nightmare.nightmare-revealed {
+  animation: nightmareReveal 0.7s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+@keyframes nightmareReveal {
+  0%   { transform: scale(0) rotate(15deg); opacity:0; filter: blur(8px); }
+  60%  { transform: scale(1.1) rotate(-3deg); opacity:1; filter: blur(0); }
+  100% { transform: scale(1) rotate(0deg); opacity:1; }
+}
+@keyframes nightmarePulse {
+  0%   { box-shadow: 0 0 8px rgba(200,0,200,0.5); }
+  100% { box-shadow: 0 0 28px rgba(200,0,200,1), 0 0 60px rgba(200,0,200,0.5), 0 0 100px rgba(200,0,200,0.2); }
+}
