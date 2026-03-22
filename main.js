@@ -200,7 +200,7 @@ function updateCamera() {
 
   // Target: keep player at 40% from top of screen
   // Keep player at 60% down the screen — platform they bounced from stays visible below
-  const targetCamY = p.y - GameState.canvasH * 0.6;
+  const targetCamY = p.y - GameState.canvasH * 0.35;
 
   // Camera only moves UP (cameraY only decreases)
   if (targetCamY < GameState.cameraY) {
@@ -332,7 +332,7 @@ function initRun() {
   GameState.player = Player.create(GameState.canvasW, GameState.canvasH);
 
   // Set camera: player starts near bottom of screen so platforms above are visible
-  GameState.cameraY = GameState.player.y - GameState.canvasH * 0.6;
+  GameState.cameraY = GameState.player.y - GameState.canvasH * 0.35;
   startCameraY = GameState.cameraY; // anchor for score calculation
 
   // Reset input

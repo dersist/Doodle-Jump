@@ -16,7 +16,7 @@ const Projectiles = (() => {
       piercing: options.piercing || false,
       explosive: options.explosive || false,
       hitsLeft: options.piercing ? 3 : 1,
-      life: options.life || 120,
+      life: options.life || 600,
       dead: false,
     });
   }
@@ -28,7 +28,7 @@ const Projectiles = (() => {
       r: 2,
       color: '#ff6600',
       glow: '#ff6600',
-      life: 180,
+      life: 600,
       dead: false,
     });
   }
@@ -66,9 +66,7 @@ const Projectiles = (() => {
       b.x += b.vx * dt;
       b.y += b.vy * dt;
       b.life -= dt;
-      const bScreenY = b.y - cameraY;
-      if (b.life <= 0 || b.x < -30 || b.x > canvasW + 30 ||
-          bScreenY < -100 || bScreenY > canvasH + 100) {
+      if (b.life <= 0 || b.x < -100 || b.x > canvasW + 100) {
         b.dead = true;
         continue;
       }
