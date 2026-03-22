@@ -21,8 +21,10 @@
         <button class="btn-menu btn-primary" id="btn-play">▶ LAUNCH</button>
         <button class="btn-menu btn-secondary" id="btn-shop">◈ UPGRADE LAB</button>
         <button class="btn-menu btn-secondary" id="btn-abilities">⚡ ABILITIES</button>
+        <button class="btn-menu btn-loot lb-ready" id="lb-open-btn">🎁 OPEN LOOT BOX</button>
         <button class="btn-menu btn-tertiary" id="btn-settings">⚙ SETTINGS</button>
       </div>
+      <div class="lb-timer-row"><span id="lb-timer"></span></div>
       <div class="menu-stats">
         <div class="stat-item"><span class="stat-label">BEST HEIGHT</span><span class="stat-val" id="best-score-display">0</span></div>
         <div class="stat-item"><span class="stat-label">TOTAL COINS</span><span class="stat-val" id="total-coins-display">0</span></div>
@@ -270,5 +272,22 @@
   <script src="shop.js"></script>
   <script src="ui.js"></script>
   <script src="main.js"></script>
+  <!-- LOOT BOX MODAL -->
+  <div id="lb-modal" style="display:none" class="lb-modal-overlay">
+    <div class="lb-modal">
+      <div class="lb-title">🎁 LOOT BOX</div>
+      <div id="lb-strip-wrap" class="lb-strip-wrap">
+        <div class="lb-strip-arrow"></div>
+        <div class="lb-strip-viewport">
+          <div id="lb-track" class="lb-track"></div>
+        </div>
+      </div>
+      <div id="lb-reward-box" class="lb-reward-box" style="display:none">
+        <div id="lb-reward-text" class="lb-reward-text"></div>
+      </div>
+      <button id="lb-close" class="btn-menu btn-tertiary" style="margin-top:18px">CLOSE</button>
+    </div>
+  </div>
+
 </body>
 </html>

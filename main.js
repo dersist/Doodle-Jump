@@ -769,6 +769,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Apply saved settings to UI
   UI.initSettings();
+  LootBox.init();
 
   // Global Space = start new game from ANY screen (throttled)
   let lastSpaceRestart = 0;
