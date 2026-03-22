@@ -43,10 +43,13 @@ const Enemies = (() => {
 
   function getScaling(score) {
     const tier = Math.min(Math.floor(score / 300), 10);
+    const cfg = (typeof getDiffConfig === 'function') ? getDiffConfig() : { attackMult: 1, aimMult: 1 };
+    // attackMult boosts enemy HP and damage so nightmare enemies are much tankier/deadlier
+    const dm = cfg.attackMult || 1;
     return {
-      health:   1 + tier * 0.6,
-      speed:    1 + tier * 0.12,
-      damage:   1 + Math.floor(tier / 3),
+      health:   (1 + tier * 0.6) * dm,
+      speed:    (1 + tier * 0.12) * Math.sqrt(dm), // speed grows slower than health
+      damage:   Math.ceil((1 + Math.floor(tier / 3)) * dm * 0.4), // damage scales with difficulty
       scoreVal: 10 + tier * 8,
     };
   }
@@ -123,7 +126,8 @@ const Enemies = (() => {
     const spy = (player.y + player.h / 2) - cameraY; // screen Y of player center
 
     const cfg = (typeof getDiffConfig === 'function') ? getDiffConfig() : { spawnMult: 1, attackMult: 1, aimMult: 1 };
-    spawnInterval = Math.max(60, (280 - score * 0.08) / cfg.spawnMult);
+    const spawnFloor = Math.max(5, 80 / (cfg.spawnMult || 1));
+    spawnInterval = Math.max(spawnFloor, (280 - score * 0.08) / cfg.spawnMult);
     spawnTimer += dt;
     if (spawnTimer >= spawnInterval && score > 50) {
       spawnTimer = 0;
@@ -147,8 +151,9 @@ const Enemies = (() => {
 
         // ── FLOATER: drifts sinusoidally + fires 2-way spread aimed at player ──
         case TYPES.FLOATER: {
-          e.sx += e.vsx * dt;
-          e.sy += Math.sin(Date.now() * 0.0015 + e.orbitAngle) * 0.6 * dt;
+          const fAim = e.aimMult || 1;
+          e.sx += e.vsx * fAim * dt;
+          e.sy += Math.sin(Date.now() * 0.0015 + e.orbitAngle) * 0.6 * fAim * dt;
           if (e.sx <= 0 || e.sx + e.w >= canvasW) e.vsx *= -1;
           e.sy = Math.max(10, Math.min(canvasH - e.h - 10, e.sy));
 
@@ -248,7 +253,7 @@ const Enemies = (() => {
 
         // ── SPINNER: orbits + fires spinning radial shots continuously ──
         case TYPES.SPINNER: {
-          e.orbitAngle += e.orbitSpeed * dt;
+          e.orbitAngle += e.orbitSpeed * (e.aimMult || 1) * dt;
           // Orbit center drifts toward player X slowly
           e.orbitCx += (spx - e.orbitCx) * 0.001 * dt;
           e.orbitCy += (spy - e.orbitCy) * 0.001 * dt;
@@ -280,8 +285,9 @@ const Enemies = (() => {
 
         // ── SPLITTER: bounces wall-to-wall + fires aimed shot + splits on death ──
         case TYPES.SPLITTER: {
-          e.sx += e.vsx * dt;
-          e.sy += e.vsy * dt;
+          const sAim = e.aimMult || 1;
+          e.sx += e.vsx * sAim * dt;
+          e.sy += e.vsy * sAim * dt;
           if (e.sx <= 0 || e.sx + e.w >= canvasW) { e.vsx *= -1; e.sx = Math.max(0, Math.min(canvasW - e.w, e.sx)); }
           if (e.sy <= 5  || e.sy + e.h >= canvasH - 5)  { e.vsy *= -1; e.sy = Math.max(5, Math.min(canvasH - e.h - 5, e.sy)); }
 

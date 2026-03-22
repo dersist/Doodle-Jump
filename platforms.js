@@ -83,7 +83,8 @@ const Platforms = (() => {
       hasCoin: type === TYPE.COIN_PLAT,
       coinCollected: false,
     };
-    const minW = 40 * scale;
+    // Nightmare platScale=0.3 → minW=12, maxW=60 — very thin platforms
+    const minW = Math.max(12, 40 * scale);
     const maxW = 200 * scale;
     p.w = Math.max(minW, Math.min(maxW, p.w));
     return p;
