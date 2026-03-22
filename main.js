@@ -104,6 +104,9 @@ const GameState = {
   // Platform tracking
   lastLandedPlatformId: null,
 
+  // Cumulative height tracking for ascension
+  totalHeightJumped: 0,
+
   // Difficulty
   difficultyMult: 1,
 
@@ -345,10 +348,13 @@ function updateScore() {
   const mult = PlayerUpgrades.getScoreBonus();
   const newScore = Math.floor(rawScore * mult);
   if (newScore > GameState.score) {
+    const gained = newScore - GameState.score;
     GameState.score = newScore;
+    // Accumulate total height for prestige
+    GameState.totalHeightJumped = (GameState.totalHeightJumped || 0) + gained;
+
     if (newScore > GameState.bestScore) {
       GameState.bestScore = newScore;
-      Save.save();
     }
     // Milestone check
     if (typeof Milestones !== 'undefined') Milestones.check(newScore);
@@ -613,16 +619,16 @@ function update(dt, rawDt) {
     const ascBtn  = document.getElementById('btn-ascend');
     if (ascHud) {
       ascHud.style.display = 'block';
+      const lvl    = Prestige.getLevel();
       const needed = Prestige.getNextHeight();
-      const cur    = GameState.score;
-      const pct    = Math.min(100, (cur / needed) * 100);
+      const cur    = GameState.totalHeightJumped || 0;
+      const pct    = lvl >= 10 ? 100 : Math.min(100, (cur / needed) * 100);
       if (ascFill) ascFill.style.width = pct.toFixed(1) + '%';
       if (ascText) {
-        const lvl = Prestige.getLevel();
         if (lvl >= 10) {
-          ascText.textContent = 'MAX ASCENSION';
+          ascText.textContent = 'MAX ASCENSION ✨';
         } else {
-          ascText.textContent = `${cur.toLocaleString()} / ${needed.toLocaleString()}`;
+          ascText.textContent = `${cur.toLocaleString()} / ${needed.toLocaleString()} total`;
         }
       }
       if (ascBtn) ascBtn.style.display = Prestige.canAscend() ? 'block' : 'none';
@@ -869,6 +875,9 @@ window.addEventListener('DOMContentLoaded', () => {
   Shop.init();
 
   // Apply saved settings to UI
+  // CRITICAL: init inventory from saved state BEFORE showing UI
+  Inventory.init();
+
   UI.initSettings();
   LootBox.init();
   // Init new midgame systems
@@ -1006,6 +1015,38 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('admin-panel').style.display = 'none';
     UI.showScreen('settings-screen');
     adminLog('NIGHTMARE mode unlocked — check Settings!');
+  });
+
+  wireAdminBtn('adm-skip-daily', () => {
+    // Clear daily cache so next getChallenges() generates fresh ones
+    try { localStorage.removeItem('neon_daily_v1'); } catch(e) {}
+    if (typeof DailyChallenge !== 'undefined') DailyChallenge._reset();
+    // Re-render daily panel if open
+    const panel = document.getElementById('daily-panel');
+    if (panel && panel.style.display !== 'none') {
+      panel.style.display = 'none'; // force close so user reopens fresh
+    }
+    adminLog('Daily challenges refreshed');
+  });
+
+  wireAdminBtn('adm-grant-ascension', () => {
+    if (!GameState.prestige) GameState.prestige = { level: 0, passives: [] };
+    const st = GameState.prestige;
+    if (st.level >= 10) { adminLog('Already max ascension'); return; }
+    // Give enough totalHeight to allow ascension
+    const needed = Prestige.getNextHeight();
+    GameState.totalHeightJumped = Math.max(GameState.totalHeightJumped || 0, needed);
+    Save.save();
+    adminLog('Enough height granted — click ASCEND in-game');
+  });
+
+  wireAdminBtn('adm-max-mastery', () => {
+    if (!GameState.mastery) GameState.mastery = {};
+    const ids = ['rocket_surge','phase_dash','gravity_flip','energy_shield','pulse_slam',
+                 'drone','time_distort','platform_forge','chaos_engine','overdrive'];
+    ids.forEach(id => { GameState.mastery[id] = { uses: 5000, stars: 5 }; });
+    Save.save();
+    adminLog('All abilities maxed to 5★ mastery');
   });
 
   wireAdminBtn('adm-reset-all', () => {

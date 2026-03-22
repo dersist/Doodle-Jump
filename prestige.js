@@ -24,15 +24,24 @@ const Prestige = (() => {
   }
 
   function getRequiredHeight(level) {
-    // Level 0→1 needs 10k, 1→2 needs 15k, 2→3 needs 20k, etc.
-    return 10000 + level * 5000;
+    // Cumulative total height thresholds (exponentially increasing)
+    // 0→1: 100k,  1→2: 500k,  2→3: 1.5M,  3→4: 3.5M,  4→5: 7.5M
+    // 5→6: 15M,   6→7: 30M,   7→8: 60M,   8→9: 120M,  9→10: 250M
+    const thresholds = [100000, 500000, 1500000, 3500000, 7500000,
+                        15000000, 30000000, 60000000, 120000000, 250000000];
+    return thresholds[Math.min(level, thresholds.length - 1)];
+  }
+
+  function getTotalHeight() {
+    return GameState.totalHeightJumped || 0;
   }
 
   function getLevel() { return getState().level; }
 
   function canAscend() {
     const st = getState();
-    return GameState.score >= getRequiredHeight(st.level);
+    if (st.level >= 10) return false;
+    return getTotalHeight() >= getRequiredHeight(st.level);
   }
 
   function ascend() {
@@ -43,8 +52,9 @@ const Prestige = (() => {
     const passive = PASSIVES[Math.min(newLevel - 1, PASSIVES.length - 1)];
     if (passive && !st.passives.includes(passive.id)) st.passives.push(passive.id);
 
-    // Big coin reward: 200 * level
-    const bonus = 200 * newLevel;
+    // Coin reward scales with ascension level
+    const coinScale = [500, 1500, 3000, 5000, 8000, 12000, 20000, 35000, 60000, 100000];
+    const bonus = coinScale[Math.min(newLevel - 1, coinScale.length - 1)];
     GameState.totalCoins += bonus;
     Save.save();
 
@@ -86,7 +96,7 @@ const Prestige = (() => {
     document.getElementById('asc-passive-name').textContent = passive.name;
     document.getElementById('asc-passive-desc').textContent = passive.desc;
     document.getElementById('asc-next').textContent =
-      level >= 10 ? 'MAX ASCENSION REACHED' : `Next: reach height ${getRequiredHeight(level).toLocaleString()}`;
+      level >= 10 ? 'MAX ASCENSION REACHED' : `Next: ${getRequiredHeight(level).toLocaleString()} total height`;
     modal.style.display = 'flex';
     void modal.offsetWidth; modal.classList.add('asc-in');
     document.getElementById('asc-close')?.addEventListener('click', () => {

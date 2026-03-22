@@ -303,6 +303,7 @@ const Save = (() => {
       playerUpgradeLevels: GameState.playerUpgradeLevels,
       gunUpgrades: GameState.gunUpgrades,
       settings: GameState.settings,
+      totalHeightJumped: GameState.totalHeightJumped || 0,
       prestige: GameState.prestige,
       mastery: GameState.mastery,
       cosmetics: GameState.cosmetics,
@@ -324,6 +325,7 @@ const Save = (() => {
       if (data.playerUpgradeLevels) GameState.playerUpgradeLevels = data.playerUpgradeLevels;
       if (data.gunUpgrades) GameState.gunUpgrades = data.gunUpgrades;
       if (data.settings) GameState.settings = { ...GameState.settings, ...data.settings };
+      if (data.totalHeightJumped !== undefined) GameState.totalHeightJumped = data.totalHeightJumped;
       if (data.prestige) GameState.prestige = data.prestige;
       if (data.mastery) GameState.mastery = data.mastery;
       if (data.cosmetics) GameState.cosmetics = data.cosmetics;
@@ -340,6 +342,7 @@ const Save = (() => {
     GameState.inventorySlots = { 1: null, 2: null, 3: null };
     GameState.playerUpgradeLevels = {};
     GameState.gunUpgrades = {};
+    GameState.totalHeightJumped = 0;
     GameState.prestige = { level: 0, passives: [] };
     GameState.mastery = {};
     GameState.cosmetics = { owned: ['skin_default','trail_none','part_default'], equipped: { skin:'skin_default', trail:'trail_none', particle:'part_default' } };
@@ -633,14 +636,33 @@ const UI = (() => {
   function updateMainMenuStats() {
     const prestigeEl = document.getElementById('prestige-display');
     if (prestigeEl && typeof Prestige !== 'undefined') {
-      prestigeEl.textContent = Prestige.getLevel() > 0 ? `${Prestige.getLevel()} ✨` : '0';
+      const lvl = Prestige.getLevel();
+      prestigeEl.textContent = lvl > 0 ? `${lvl} ✨` : '0';
     }
     const bs = document.getElementById('best-score-display');
     const tc = document.getElementById('total-coins-display');
     const runs = document.getElementById('runs-display');
-    if (bs) bs.textContent = Math.floor(GameState.bestScore);
-    if (tc) tc.textContent = GameState.totalCoins;
-    if (runs) runs.textContent = GameState.totalRuns;
+    if (bs) bs.textContent = Math.floor(GameState.bestScore).toLocaleString();
+    if (tc) tc.textContent = (GameState.totalCoins || 0).toLocaleString();
+    if (runs) runs.textContent = GameState.totalRuns || 0;
+
+    // Ascension tracker on main menu
+    if (typeof Prestige !== 'undefined') {
+      const lvl      = Prestige.getLevel();
+      const total    = GameState.totalHeightJumped || 0;
+      const needed   = Prestige.getNextHeight();
+      const pct      = lvl >= 10 ? 100 : Math.min(100, (total / needed) * 100);
+      const totalEl  = document.getElementById('asc-total-display');
+      const fillEl   = document.getElementById('asc-main-fill');
+      const labelEl  = document.getElementById('asc-main-label');
+      const ascBtn   = document.getElementById('btn-ascend-menu');
+      if (totalEl)  totalEl.textContent  = total.toLocaleString();
+      if (fillEl)   fillEl.style.width   = pct.toFixed(1) + '%';
+      if (labelEl)  labelEl.textContent  = lvl >= 10
+        ? '✨ MAX ASCENSION'
+        : `Next ascension: ${needed.toLocaleString()} total height`;
+      if (ascBtn)   ascBtn.style.display = Prestige.canAscend() ? 'inline-block' : 'none';
+    }
   }
 
   function initAbilityEquipScreen() {

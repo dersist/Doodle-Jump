@@ -70,13 +70,26 @@ const DailyChallenge = (() => {
   }
 
   let _challenges = null;
+  let _lastDateKey = null;
 
   function getChallenges() {
+    const today = dateKey();
+    // Reset if date changed (midnight rollover) or first load
+    if (_lastDateKey !== today) {
+      _challenges = null;
+      _lastDateKey = today;
+    }
     if (_challenges) return _challenges;
     const saved = loadState();
-    _challenges = saved ? saved.challenges : generateChallenges(dateKey());
-    saveState(_challenges); // persist generated challenges
+    _challenges = saved ? saved.challenges : generateChallenges(today);
+    saveState(_challenges);
     return _challenges;
+  }
+
+  // Force-refresh challenges (admin use)
+  function _reset() {
+    _challenges = null;
+    _lastDateKey = null;
   }
 
   // Called at end of run with run stats
@@ -118,5 +131,5 @@ const DailyChallenge = (() => {
     return tomorrow - now;
   }
 
-  return { getChallenges, checkRunResults, getTimeUntilReset };
+  return { getChallenges, checkRunResults, getTimeUntilReset, _reset };
 })();
