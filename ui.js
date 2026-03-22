@@ -318,6 +318,7 @@ const Save = (() => {
     GameState.ownedAbilities = {};
     GameState.inventorySlots = { 1: null, 2: null, 3: null };
     GameState.playerUpgradeLevels = {};
+    GameState.gunUpgrades = {};
     GameState.settings = { sfx: true, shake: true, scanlines: true, autoShoot: true, difficulty: 'medium' };
   }
 
@@ -512,7 +513,13 @@ const UI = (() => {
     const bounceCoins  = Math.floor((stats.platformsBounced || 0) / 5);
     const bossCoins    = (stats.bossesKilled   || 0) * 50;
     const collected    = stats.coinsCollected  || 0;
-    const total        = heightCoins + enemyCoins + bounceCoins + bossCoins + collected;
+    const subtotal     = heightCoins + enemyCoins + bounceCoins + bossCoins + collected;
+
+    // Difficulty coin multiplier: Easy 1x, Medium 1.2x, Hard 2x
+    const diffMults = { easy: 1.0, medium: 1.2, hard: 2.0 };
+    const diff = (GameState.settings && GameState.settings.difficulty) || 'medium';
+    const diffMult = diffMults[diff] || 1.0;
+    const total = Math.floor(subtotal * diffMult);
 
     // Award total to player's persistent coins
     GameState.totalCoins += total;
@@ -550,6 +557,12 @@ const UI = (() => {
       }
       requestAnimationFrame(tick);
     }
+
+    // Update difficulty multiplier display
+    const diffMultEl = document.getElementById('go-coins-diffmult');
+    if (diffMultEl) diffMultEl.textContent = '×' + diffMult.toFixed(1);
+    const diffRow = document.getElementById('go-row-diffmult');
+    if (diffRow) { diffRow.style.display = diffMult !== 1.0 ? '' : 'none'; }
 
     const rowData = [
       { id: 'height',    amount: heightCoins, label: '+' },

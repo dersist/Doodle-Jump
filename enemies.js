@@ -23,6 +23,24 @@ const Enemies = (() => {
   let spawnTimer = 0;
   let spawnInterval = 300;
 
+
+  // How fast enemies break platforms: 0.001/frame at score 0, up to 0.02/frame at 100k
+  function getPlatBreakRate(score) {
+    return 0.001 + (Math.min(score, 100000) / 100000) * 0.019;
+  }
+
+  // Pick a random platform on screen as target
+  function pickPlatformTarget(canvasH, cameraY) {
+    if (typeof Platforms === 'undefined') return null;
+    const all = Platforms.getAll().filter(p =>
+      !p.broken && !p.cracking &&
+      p.type !== 'spiky' &&
+      (p.y - cameraY) > 20 && (p.y - cameraY) < canvasH - 20
+    );
+    if (!all.length) return null;
+    return all[Math.floor(Math.random() * all.length)];
+  }
+
   function getScaling(score) {
     const tier = Math.min(Math.floor(score / 300), 10);
     return {
@@ -74,6 +92,8 @@ const Enemies = (() => {
       spawnScore: score,
       persistScore: 80 + Math.random() * 40,
       aimMult: cfg.aimMult || 1.0,
+      platTarget: null,
+      platBreakTimer: 0,
       // Attack state
       shootTimer: Math.random() * 60,    // stagger spawns so not all shoot at once
       shootInterval: (70 + Math.random() * 50) / (cfg.attackMult || 1),
@@ -277,6 +297,45 @@ const Enemies = (() => {
       }
 
       if (e.hitFlash > 0) e.hitFlash -= dt;
+    }
+
+    // ── PLATFORM TARGETING & BREAKING ──
+    const breakRate = getPlatBreakRate(score);
+    for (const e of enemies) {
+      if (e.dead) continue;
+
+      // Pick a platform target if we don't have one
+      if (!e.platTarget || e.platTarget.broken) {
+        e.platTarget = pickPlatformTarget(canvasH, cameraY);
+        e.platBreakTimer = 0;
+      }
+
+      if (e.platTarget) {
+        const pt = e.platTarget;
+        const ptSx = pt.x + pt.w / 2;
+        const ptSy = pt.y - cameraY + pt.h / 2;  // screen Y of platform center
+        const edx = ptSx - (e.sx + e.w / 2);
+        const edy = ptSy - (e.sy + e.h / 2);
+        const edist = Math.hypot(edx, edy);
+
+        // Drift slowly toward target platform (blended with existing movement)
+        if (edist > 8) {
+          e.sx += (edx / edist) * 0.4 * dt;
+          e.sy += (edy / edist) * 0.4 * dt;
+        }
+
+        // When close enough, accumulate break damage
+        if (edist < 30) {
+          e.platBreakTimer += breakRate * dt;
+          if (e.platBreakTimer >= 1) {
+            pt.cracking = true;
+            pt.crackDelay = Math.max(5, 30 - Math.floor(score / 5000)); // faster at height
+            e.platTarget = null;
+            e.platBreakTimer = 0;
+            Particles.burst(pt.x + pt.w/2, ptSy, '#ff6600', 6);
+          }
+        }
+      }
     }
 
     // Cull expired enemies
