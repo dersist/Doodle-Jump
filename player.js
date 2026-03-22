@@ -543,7 +543,8 @@ const Player = (() => {
         const t = player.trail[i];
         const alpha = (1 - i / player.trail.length) * 0.3;
         ctx.globalAlpha = alpha;
-        ctx.fillStyle = player.rocketActive ? '#ff6600' : '#ffee00';
+        const trailCol = (typeof Cosmetics !== 'undefined' && !player.rocketActive) ? (Cosmetics.getTrailColor(Date.now()/16|0) || '#ffee00') : (player.rocketActive ? '#ff6600' : '#ffee00');
+        ctx.fillStyle = trailCol;
         ctx.beginPath();
         ctx.arc(t.x, t.y - cameraY, (player.w / 2) * (1 - i / player.trail.length), 0, Math.PI * 2);
         ctx.fill();
@@ -559,7 +560,8 @@ const Player = (() => {
       ctx.shadowColor = '#00f5ff';
       ctx.shadowBlur = 18;
     } else {
-      ctx.shadowColor = '#00f5ff';
+      const cosGlow = (typeof Cosmetics !== 'undefined') ? Cosmetics.getGlow() : '#00f5ff';
+      ctx.shadowColor = cosGlow;
       ctx.shadowBlur = 10;
     }
 
@@ -570,9 +572,10 @@ const Player = (() => {
       bodyGrad.addColorStop(0.6, '#ffcc00');
       bodyGrad.addColorStop(1, '#ff6600');
     } else {
-      bodyGrad.addColorStop(0, '#00f5ff');
-      bodyGrad.addColorStop(0.6, '#0066ff');
-      bodyGrad.addColorStop(1, '#000066');
+      const cosColors = (typeof Cosmetics !== 'undefined') ? Cosmetics.getBodyColors(Date.now() / 50 | 0) : ['#00f5ff','#0066ff','#000066'];
+      bodyGrad.addColorStop(0, cosColors[0]);
+      bodyGrad.addColorStop(0.6, cosColors[1]);
+      bodyGrad.addColorStop(1, cosColors[2]);
     }
 
     ctx.fillStyle = bodyGrad;

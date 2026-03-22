@@ -341,7 +341,6 @@ const Combo = {
 };
 
 function updateScore() {
-  // Divide by 50: ~50 pixels per "meter", so first jump gives ~4-8 height units
   const rawScore = Math.max(0, Math.floor((startCameraY - GameState.cameraY) / 50));
   const mult = PlayerUpgrades.getScoreBonus();
   const newScore = Math.floor(rawScore * mult);
@@ -350,6 +349,13 @@ function updateScore() {
     if (newScore > GameState.bestScore) {
       GameState.bestScore = newScore;
       Save.save();
+    }
+    // Milestone check
+    if (typeof Milestones !== 'undefined') Milestones.check(newScore);
+    // Ascension check (show button in HUD if can ascend)
+    if (typeof Prestige !== 'undefined' && Prestige.canAscend()) {
+      const ascBtn = document.getElementById('btn-ascend');
+      if (ascBtn) ascBtn.style.display = 'block';
     }
   }
 }
@@ -388,7 +394,19 @@ function handleGameOver() {
   SFX.play('gameover');
 
   setTimeout(() => {
-    UI.showGameOver(GameState.score, GameState.coins);
+    // Daily challenge check
+  if (typeof DailyChallenge !== 'undefined') {
+    DailyChallenge.checkRunResults({
+      height: GameState.score,
+      enemiesKilled: RunStats.enemiesKilled,
+      platformsBounced: RunStats.platformsBounced,
+      coinsCollected: RunStats.coinsCollected,
+      timeSeconds: typeof UI !== 'undefined' ? UI.getElapsedSeconds() : 0,
+      maxCombo: RunStats.maxCombo || 0,
+      damageTaken: RunStats.damageTaken || 0,
+    });
+  }
+  UI.showGameOver(GameState.score, GameState.coins);
   }, 600);
 }
 
@@ -587,6 +605,17 @@ function update(dt, rawDt) {
   UI.updateAbilityCooldowns();
   UI.updateSpeedrunTimer();
 
+  // Milestone indicator
+  if (typeof Milestones !== 'undefined' && GameState.score > 0) {
+    const mi = document.getElementById('milestone-indicator');
+    const ml = document.getElementById('milestone-label');
+    if (mi && ml) {
+      const next = Milestones.getNextMilestone(GameState.score);
+      ml.textContent = `🏁 ${next.height.toLocaleString()} → +${next.coins}◈`;
+      mi.style.display = 'block';
+    }
+  }
+
   // Combo HUD
   const comboEl = document.getElementById('combo-display');
   const comboVal = document.getElementById('combo-val');
@@ -685,6 +714,14 @@ function wireButtons() {
     Shop.open(false);
   });
 
+  document.getElementById('btn-cosmetics')?.addEventListener('click', () => {
+    SFX.play('click');
+    const cosCoins = document.getElementById('cosmetics-coins');
+    if (cosCoins) cosCoins.textContent = GameState.totalCoins.toLocaleString();
+    if (typeof CosmeticsUI !== 'undefined') CosmeticsUI.init();
+    UI.showScreen('cosmetics-screen');
+  });
+
   document.getElementById('btn-abilities')?.addEventListener('click', () => {
     SFX.play('click');
     UI.initAbilityEquipScreen();
@@ -756,6 +793,10 @@ function returnToMainMenu() {
   GameState.running = false;
   UI.showScreen('main-menu');
   UI.updateMainMenuStats();
+  const prestigeEl = document.getElementById('prestige-display');
+  if (prestigeEl && typeof Prestige !== 'undefined') {
+    prestigeEl.textContent = Prestige.getLevel() > 0 ? `${Prestige.getLevel()} ✨` : '0';
+  }
 }
 
 // ── BOOTSTRAP ────────────────────────────────────────────────
@@ -772,6 +813,10 @@ window.addEventListener('DOMContentLoaded', () => {
   // Apply saved settings to UI
   UI.initSettings();
   LootBox.init();
+  // Init new midgame systems
+  if (typeof Cosmetics !== 'undefined') Cosmetics.getState(); // ensure state initialized
+  if (typeof Mastery !== 'undefined') Mastery.getState();
+  if (typeof Prestige !== 'undefined') Prestige.getLevel();
 
   // Global Space = start new game from ANY screen (throttled)
   let lastSpaceRestart = 0;

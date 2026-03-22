@@ -303,6 +303,10 @@ const Save = (() => {
       playerUpgradeLevels: GameState.playerUpgradeLevels,
       gunUpgrades: GameState.gunUpgrades,
       settings: GameState.settings,
+      prestige: GameState.prestige,
+      mastery: GameState.mastery,
+      cosmetics: GameState.cosmetics,
+      milestonesReached: GameState.milestonesReached,
     };
     try { localStorage.setItem(KEY, JSON.stringify(data)); } catch(e) {}
   }
@@ -320,6 +324,10 @@ const Save = (() => {
       if (data.playerUpgradeLevels) GameState.playerUpgradeLevels = data.playerUpgradeLevels;
       if (data.gunUpgrades) GameState.gunUpgrades = data.gunUpgrades;
       if (data.settings) GameState.settings = { ...GameState.settings, ...data.settings };
+      if (data.prestige) GameState.prestige = data.prestige;
+      if (data.mastery) GameState.mastery = data.mastery;
+      if (data.cosmetics) GameState.cosmetics = data.cosmetics;
+      if (data.milestonesReached !== undefined) GameState.milestonesReached = data.milestonesReached;
     } catch(e) {}
   }
 
@@ -332,6 +340,10 @@ const Save = (() => {
     GameState.inventorySlots = { 1: null, 2: null, 3: null };
     GameState.playerUpgradeLevels = {};
     GameState.gunUpgrades = {};
+    GameState.prestige = { level: 0, passives: [] };
+    GameState.mastery = {};
+    GameState.cosmetics = { owned: ['skin_default','trail_none','part_default'], equipped: { skin:'skin_default', trail:'trail_none', particle:'part_default' } };
+    GameState.milestonesReached = 0;
     GameState.settings = { sfx: true, shake: true, scanlines: true, autoShoot: true, difficulty: 'medium' };
   }
 
@@ -619,6 +631,10 @@ const UI = (() => {
   }
 
   function updateMainMenuStats() {
+    const prestigeEl = document.getElementById('prestige-display');
+    if (prestigeEl && typeof Prestige !== 'undefined') {
+      prestigeEl.textContent = Prestige.getLevel() > 0 ? `${Prestige.getLevel()} ✨` : '0';
+    }
     const bs = document.getElementById('best-score-display');
     const tc = document.getElementById('total-coins-display');
     const runs = document.getElementById('runs-display');

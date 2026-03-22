@@ -74,6 +74,9 @@ const Abilities = (() => {
       case 'overdrive':      doOverdrive(); break;
     }
 
+    // Record mastery use
+    if (typeof Mastery !== 'undefined') Mastery.recordUse(abilityId);
+
     const cdr = 1 - PlayerUpgrades.getCooldownReduction();
     let cd = BASE_COOLDOWNS[abilityId] * cdr;
     if (abilityId === 'gravity_flip') cd *= AbilityUpgrades.getFlipCooldownMult();

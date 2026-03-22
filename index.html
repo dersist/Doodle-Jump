@@ -21,6 +21,7 @@
         <button class="btn-menu btn-primary" id="btn-play">▶ LAUNCH</button>
         <button class="btn-menu btn-secondary" id="btn-shop">◈ UPGRADE LAB</button>
         <button class="btn-menu btn-secondary" id="btn-abilities">⚡ ABILITIES</button>
+        <button class="btn-menu btn-secondary" id="btn-cosmetics">🎨 COSMETICS</button>
         <div class="lb-btn-wrap">
           <button class="btn-menu btn-loot" id="lb-open-btn">🎁 OPEN LOOT BOX</button>
           <div class="lb-timer-row"><span id="lb-timer"></span></div>
@@ -31,6 +32,7 @@
         <div class="stat-item"><span class="stat-label">BEST HEIGHT</span><span class="stat-val" id="best-score-display">0</span></div>
         <div class="stat-item"><span class="stat-label">TOTAL COINS</span><span class="stat-val" id="total-coins-display">0</span></div>
         <div class="stat-item"><span class="stat-label">RUNS</span><span class="stat-val" id="runs-display">0</span></div>
+        <div class="stat-item"><span class="stat-label">ASCENSION</span><span class="stat-val" id="prestige-display">0</span></div>
       </div>
     </div>
     <div class="scanlines"></div>
@@ -275,6 +277,12 @@
   <script src="bosses.js"></script>
   <script src="shop.js"></script>
   <script src="ui.js"></script>
+  <script src="prestige.js"></script>
+  <script src="milestones.js"></script>
+  <script src="dailychallenge.js"></script>
+  <script src="mastery.js"></script>
+  <script src="cosmetics.js"></script>
+  <script src="cosmeticsui.js"></script>
   <script src="main.js"></script>
   <!-- LOOT BOX MODAL -->
   <div id="lb-modal" style="display:none" class="lb-modal-overlay">
@@ -344,6 +352,49 @@
       <div id="admin-log" class="admin-log"></div>
       <button class="admin-close" id="admin-close">✕ CLOSE</button>
     </div>
+  </div>
+
+  <!-- COSMETICS SCREEN -->
+  <div id="cosmetics-screen" class="screen">
+    <div class="screen-header">
+      <button class="btn-back" id="cosmetics-back">← BACK</button>
+      <h2 class="screen-title">🎨 COSMETICS</h2>
+      <div class="header-coins">◈ <span id="cosmetics-coins">0</span></div>
+    </div>
+    <div class="cosmetics-layout">
+      <div class="cosmetics-left">
+        <canvas id="cosmetics-preview" width="120" height="160" class="cosmetics-preview-canvas"></canvas>
+        <div class="cosmetics-tabs">
+          <button class="ctab active" id="ctab-shop">SHOP</button>
+          <button class="ctab" id="ctab-wardrobe">WARDROBE</button>
+        </div>
+      </div>
+      <div class="cosmetics-right">
+        <div id="cpanel-shop"  class="cpanel"></div>
+        <div id="cpanel-wardrobe" class="cpanel" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ASCENSION MODAL -->
+  <div id="ascension-modal" style="display:none" class="asc-overlay">
+    <div class="asc-modal">
+      <div class="asc-title">✨ ASCENSION!</div>
+      <div class="asc-level-text">LEVEL <span id="asc-level">1</span></div>
+      <div class="asc-coins" id="asc-coins">+200 ◈</div>
+      <div class="asc-passive-box">
+        <div class="asc-passive-icon" id="asc-passive-icon">🦵</div>
+        <div class="asc-passive-name" id="asc-passive-name">Nimble Legs</div>
+        <div class="asc-passive-desc" id="asc-passive-desc">+5% jump velocity permanently</div>
+      </div>
+      <div class="asc-next" id="asc-next">Next: reach height 15,000</div>
+      <button class="btn-menu btn-primary" id="asc-close" style="margin-top:16px">CONTINUE ASCENDING</button>
+    </div>
+  </div>
+
+  <!-- NEXT MILESTONE HUD INDICATOR (shown during game) -->
+  <div id="milestone-indicator" style="display:none" class="milestone-indicator">
+    <span id="milestone-label">🏁 Next: 1,000 → +50◈</span>
   </div>
 
 </body>
