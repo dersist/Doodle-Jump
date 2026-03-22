@@ -3,8 +3,13 @@
 // ═══════════════════════════════════════════
 
 const Platforms = (() => {
-  const PLATFORM_W = 68;
+  const PLATFORM_W = 68;  // base width (will be tripled at score 0)
   const PLATFORM_H = 12;
+
+  // Returns platform width scale factor: 3x at score 0, down to 1x at score 100000
+  function getPlatformScale(score) {
+    return Math.max(1.0, 3.0 - (score / 100000) * 2.0);
+  }
 
   // Platform types
   const TYPE = {
@@ -44,26 +49,30 @@ const Platforms = (() => {
       const spread = y > canvasH - 250 ? 0.3 : 0.7;
       let x = canvasW / 2 - PLATFORM_W / 2 + (Math.random() - 0.5) * canvasW * spread;
       x = Math.max(10, Math.min(canvasW - PLATFORM_W - 10, x));
-      platforms.push(createPlatform(TYPE.NORMAL, x, y, canvasW));
+      platforms.push(createPlatform(TYPE.NORMAL, x, y, canvasW, 0));
     }
 
     // Player spawns at y=canvasH-160, feet at canvasH-120.
     // Force a wide platform right under the player's feet.
-    const gp = createPlatform(TYPE.NORMAL, canvasW / 2 - 50, canvasH - 110, canvasW);
+    const gp = createPlatform(TYPE.NORMAL, canvasW / 2 - 50, canvasH - 110, canvasW, 0);
     gp.w = 100;
     platforms.unshift(gp);
 
     topY = -200;
   }
 
-  function createPlatform(type, x, y, canvasW) {
+  function createPlatform(type, x, y, canvasW, score) {
+    const scale = getPlatformScale(score || 0);
+    const baseW  = PLATFORM_W * scale;
     const p = {
       type,
       x, y,
-      w: PLATFORM_W + (type === TYPE.SPRING ? 0 : Math.random() * 20 - 10),
+      w: baseW + (type === TYPE.SPRING ? 0 : (Math.random() * 20 - 10) * scale),
       h: PLATFORM_H,
       broken: false,
       breakTimer: 0,
+      cracking: false,
+      crackDelay: 0,
       phaseTimer: 0,
       phaseVisible: true,
       moveDir: Math.random() > 0.5 ? 1 : -1,
@@ -71,7 +80,9 @@ const Platforms = (() => {
       hasCoin: type === TYPE.COIN_PLAT,
       coinCollected: false,
     };
-    p.w = Math.max(40, Math.min(90, p.w));
+    const minW = 40 * scale;
+    const maxW = 200 * scale;
+    p.w = Math.max(minW, Math.min(maxW, p.w));
     return p;
   }
 
@@ -110,7 +121,7 @@ const Platforms = (() => {
       topY -= gap + Math.random() * 20;
       const type = getTypeForHeight(score);
       const x = Math.random() * (canvasW - PLATFORM_W - 10) + 5;
-      platforms.push(createPlatform(type, x, topY, canvasW));
+      platforms.push(createPlatform(type, x, topY, canvasW, score));
 
       // Alongside every dangerous platform, spawn a safe one nearby so
       // there's always a valid path upward
@@ -118,7 +129,7 @@ const Platforms = (() => {
         const safeX = x > canvasW / 2
           ? Math.random() * (canvasW / 2 - PLATFORM_W)
           : canvasW / 2 + Math.random() * (canvasW / 2 - PLATFORM_W);
-        platforms.push(createPlatform(TYPE.NORMAL, safeX, topY - gap * 0.6, canvasW));
+        platforms.push(createPlatform(TYPE.NORMAL, safeX, topY - gap * 0.6, canvasW, score));
         topY -= gap * 0.6;
       }
     }
@@ -278,7 +289,7 @@ const Platforms = (() => {
   function getAll() { return platforms; }
 
   function addPlatform(type, x, y) {
-    platforms.push(createPlatform(type, x, y));
+    platforms.push(createPlatform(type, x, y, GameState?.canvasW || 400, GameState?.score || 0));
   }
 
   function removeById(id) {

@@ -473,6 +473,8 @@ function update(dt, rawDt) {
 }
 
 // ── RENDER ───────────────────────────────────────────────────
+const ZOOM = 0.65; // zoom out factor — smaller everything, more platforms on screen
+
 function render() {
   const W   = GameState.canvasW;
   const H   = GameState.canvasH;
@@ -489,8 +491,14 @@ function render() {
   ctx.save();
   if (sx || sy) ctx.translate(sx, sy);
 
-  // Background (screen-space)
+  // Background (full canvas, no zoom)
   BG.draw(cam);
+
+  // Zoom out: scale from center of canvas
+  ctx.save();
+  ctx.translate(W / 2, H / 2);
+  ctx.scale(ZOOM, ZOOM);
+  ctx.translate(-W / 2, -H / 2);
 
   // All draw modules handle their own cameraY subtraction
   Platforms.draw(ctx, cam, false);
@@ -500,7 +508,9 @@ function render() {
   if (p) Player.draw(ctx, p, cam);
   Particles.draw(ctx);
 
-  // Scanlines
+  ctx.restore();
+
+  // Scanlines (full canvas, no zoom)
   if (GameState.settings.scanlines) drawScanlines(W, H);
 
   ctx.restore();
