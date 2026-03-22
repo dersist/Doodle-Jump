@@ -1092,3 +1092,25 @@ html, body {
   background: rgba(0, 255, 136, 0.05);
 }
 .gun-mod-card .pup-header { border-bottom: 1px solid rgba(255,100,0,0.15); }
+
+/* ══════════════════════ DIFFICULTY BUTTONS */
+.difficulty-btns {
+  display: flex;
+  gap: 8px;
+}
+.diff-btn {
+  font-family: var(--font-main);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  padding: 6px 14px;
+  border: 1px solid rgba(0,245,255,0.25);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all 0.15s;
+}
+.diff-btn:hover { border-color: var(--neon-cyan); color: var(--neon-cyan); }
+.diff-btn.active { background: rgba(0,245,255,0.12); border-color: var(--neon-cyan); color: var(--neon-cyan); }
+#diff-hard.active { background: rgba(255,0,128,0.12); border-color: var(--neon-pink); color: var(--neon-pink); }
+#diff-easy.active { background: rgba(0,255,136,0.12); border-color: var(--neon-green); color: var(--neon-green); }

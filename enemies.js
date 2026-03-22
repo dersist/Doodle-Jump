@@ -33,7 +33,8 @@ const Enemies = (() => {
     };
   }
 
-  function spawnEnemy(score, canvasW, canvasH) {
+  function spawnEnemy(score, canvasW, canvasH, cfg) {
+    cfg = cfg || { attackMult: 1, aimMult: 1 };
     const scale = getScaling(score);
     const r = Math.random();
     let type;
@@ -72,9 +73,10 @@ const Enemies = (() => {
       scale,
       spawnScore: score,
       persistScore: 80 + Math.random() * 40,
+      aimMult: cfg.aimMult || 1.0,
       // Attack state
       shootTimer: Math.random() * 60,    // stagger spawns so not all shoot at once
-      shootInterval: 70 + Math.random() * 50,
+      shootInterval: (70 + Math.random() * 50) / (cfg.attackMult || 1),
       burstTimer: 0,
       burstCount: 0,
       burstDx: 0, burstDy: 0,
@@ -100,11 +102,12 @@ const Enemies = (() => {
     const spx = player.x + player.w / 2;          // world X
     const spy = (player.y + player.h / 2) - cameraY; // screen Y of player center
 
-    spawnInterval = Math.max(80, 280 - score * 0.08);
+    const cfg = (typeof getDiffConfig === 'function') ? getDiffConfig() : { spawnMult: 1, attackMult: 1, aimMult: 1 };
+    spawnInterval = Math.max(60, (280 - score * 0.08) / cfg.spawnMult);
     spawnTimer += dt;
     if (spawnTimer >= spawnInterval && score > 50) {
       spawnTimer = 0;
-      spawnEnemy(score, canvasW, canvasH);
+      spawnEnemy(score, canvasW, canvasH, cfg);
     }
 
     for (const e of enemies) {
@@ -186,10 +189,11 @@ const Enemies = (() => {
             e.dashTimer -= dt;
           } else {
             // Normal chase
-            const maxSpd = 1.8 * e.scale.speed;
+            const aimM = e.aimMult || 1.0;
+          const maxSpd = 1.8 * e.scale.speed * aimM;
             if (dist > 25) {
-              e.vsx += (dx / dist) * 0.18 * dt;
-              e.vsy += (dy / dist) * 0.18 * dt;
+              e.vsx += (dx / dist) * 0.18 * aimM * dt;
+              e.vsy += (dy / dist) * 0.18 * aimM * dt;
             }
             e.vsx = Math.max(-maxSpd, Math.min(maxSpd, e.vsx));
             e.vsy = Math.max(-maxSpd, Math.min(maxSpd, e.vsy));

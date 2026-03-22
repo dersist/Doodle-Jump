@@ -208,7 +208,20 @@ function updateCamera() {
   }
 }
 
-// ── SCORE ────────────────────────────────────────────────────
+// ── DIFFICULTY HELPER ────────────────────────────────────────
+function getDifficulty() {
+  return (GameState.settings && GameState.settings.difficulty) || 'medium';
+}
+
+// Returns a config object for the current difficulty
+function getDiffConfig() {
+  const d = getDifficulty();
+  return {
+    easy:   { platScale: 3.0, spawnMult: 0.5,  attackMult: 0.5,  aimMult: 0.4 },
+    medium: { platScale: 2.0, spawnMult: 1.0,  attackMult: 1.0,  aimMult: 1.0 },
+    hard:   { platScale: 1.0, spawnMult: 1.8,  attackMult: 1.4,  aimMult: 1.4 },
+  }[d] || { platScale: 2.0, spawnMult: 1.0, attackMult: 1.0, aimMult: 1.0 };
+}
 let startCameraY = 0; // set in initRun so score is relative to start
 
 // Per-run stat tracking for end screen

@@ -292,16 +292,20 @@ const Player = (() => {
       // Keep slamming
     }
 
+    // Zoom-aware death threshold
+    const _deathZoom = (typeof ZOOM !== 'undefined') ? ZOOM : 1;
+    const _visH = canvasH / _deathZoom;
+
     // ── GRAVITY FLIP — game over if player falls off bottom while flipped ──
     if (GameState.gravityFlipped) {
-      if (player.y > GameState.cameraY + canvasH + 100) {
+      if (player.y > GameState.cameraY + _visH + 200) {
         if (typeof handleGameOver === 'function') handleGameOver();
         else GameState.gameOver = true;
       }
     }
 
     // ── GAME OVER CHECK — fell below screen (normal gravity) ──
-    if (!GameState.gravityFlipped && player.y > GameState.cameraY + canvasH + 100) {
+    if (!GameState.gravityFlipped && player.y > GameState.cameraY + _visH + 200) {
       if (typeof handleGameOver === 'function') handleGameOver();
       else GameState.gameOver = true;
     }

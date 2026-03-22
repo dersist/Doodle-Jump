@@ -318,7 +318,7 @@ const Save = (() => {
     GameState.ownedAbilities = {};
     GameState.inventorySlots = { 1: null, 2: null, 3: null };
     GameState.playerUpgradeLevels = {};
-    GameState.settings = { sfx: true, shake: true, scanlines: true, autoShoot: true };
+    GameState.settings = { sfx: true, shake: true, scanlines: true, autoShoot: true, difficulty: 'medium' };
   }
 
   return { save, load, reset };
@@ -666,6 +666,20 @@ const UI = (() => {
   function initSettings() {
     const backBtn = document.getElementById('settings-back');
     if (backBtn) backBtn.addEventListener('click', () => showScreen('main-menu'));
+
+    // Difficulty buttons
+    const diffs = ['easy','medium','hard'];
+    diffs.forEach(d => {
+      const btn = document.getElementById('diff-' + d);
+      if (!btn) return;
+      if (GameState.settings.difficulty === d) btn.classList.add('active');
+      btn.addEventListener('click', () => {
+        diffs.forEach(x => document.getElementById('diff-' + x)?.classList.remove('active'));
+        btn.classList.add('active');
+        GameState.settings.difficulty = d;
+        Save.save();
+      });
+    });
 
     const toggleSfx       = document.getElementById('toggle-sfx');
     const toggleShake     = document.getElementById('toggle-shake');

@@ -6,9 +6,12 @@ const Platforms = (() => {
   const PLATFORM_W = 68;  // base width (will be tripled at score 0)
   const PLATFORM_H = 12;
 
-  // Returns platform width scale factor: 3x at score 0, down to 1x at score 100000
+  // Returns platform width scale: difficulty-based at score 0, shrinks to 1x at 100k
   function getPlatformScale(score) {
-    return Math.max(1.0, 3.0 - (score / 100000) * 2.0);
+    const cfg = (typeof getDiffConfig === 'function') ? getDiffConfig() : { platScale: 2.0 };
+    const base = cfg.platScale; // 3 easy, 2 medium, 1 hard
+    // Scale down from base to 1.0 over 100k score
+    return Math.max(1.0, base - ((base - 1.0) * Math.min(score, 100000) / 100000));
   }
 
   // Platform types
